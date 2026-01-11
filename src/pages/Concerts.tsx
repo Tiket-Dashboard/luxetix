@@ -1,24 +1,30 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ConcertCard from "@/components/ConcertCard";
+import ConcertCardDB from "@/components/ConcertCardDB";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { concerts, getCategories, getConcertsByCategory } from "@/data/concerts";
+import { useConcerts, useCategories } from "@/hooks/useConcerts";
 
 const Concerts = () => {
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const categories = getCategories();
+  const { data: concerts = [], isLoading: concertsLoading } = useConcerts();
+  const { data: categories = ["Semua"], isLoading: categoriesLoading } = useCategories();
   
-  const filteredConcerts = getConcertsByCategory(selectedCategory).filter(
-    (concert) =>
+  const filteredConcerts = concerts
+    .filter((concert) => 
+      selectedCategory === "Semua" || concert.category === selectedCategory
+    )
+    .filter((concert) =>
       concert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       concert.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
       concert.venue.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    );
+
+  const isLoading = concertsLoading || categoriesLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,22 +85,14 @@ const Concerts = () => {
           </p>
 
           {/* Grid */}
-          {filteredConcerts.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : filteredConcerts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredConcerts.map((concert) => (
-                <ConcertCard
-                  key={concert.id}
-                  id={concert.id}
-                  title={concert.title}
-                  artist={concert.artist}
-                  date={concert.date}
-                  time={concert.time}
-                  venue={concert.venue}
-                  image={concert.image}
-                  price={concert.tickets[concert.tickets.length - 1].price}
-                  category={concert.category}
-                  isFeatured={concert.isFeatured}
-                />
+                <ConcertCardDB key={concert.id} concert={concert} />
               ))}
             </div>
           ) : (

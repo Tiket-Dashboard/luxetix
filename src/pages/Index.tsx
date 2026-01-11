@@ -1,18 +1,20 @@
-import { ArrowRight, Sparkles, Shield, Headphones } from "lucide-react";
+import { ArrowRight, Sparkles, Shield, Headphones, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CountdownTimer from "@/components/CountdownTimer";
-import ConcertCard from "@/components/ConcertCard";
+import ConcertCardDB from "@/components/ConcertCardDB";
 import { Button } from "@/components/ui/button";
-import { getFeaturedConcerts } from "@/data/concerts";
+import { useFeaturedConcerts } from "@/hooks/useConcerts";
 
 const Index = () => {
-  const featuredConcerts = getFeaturedConcerts();
+  const { data: featuredConcerts = [], isLoading } = useFeaturedConcerts();
   const mainConcert = featuredConcerts[0];
   
-  // Set target date for countdown (main concert)
-  const targetDate = new Date("2026-02-15T19:00:00");
+  // Set target date for countdown (main concert or fallback)
+  const targetDate = mainConcert 
+    ? new Date(`${mainConcert.date}T${mainConcert.time}`)
+    : new Date("2026-02-15T19:00:00");
 
   const features = [
     {
@@ -41,7 +43,7 @@ const Index = () => {
         {/* Background */}
         <div className="absolute inset-0">
           <img
-            src={mainConcert?.image || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&auto=format&fit=crop"}
+            src={mainConcert?.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&auto=format&fit=crop"}
             alt="Hero background"
             className="w-full h-full object-cover opacity-30"
           />
@@ -123,23 +125,17 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredConcerts.map((concert) => (
-              <ConcertCard
-                key={concert.id}
-                id={concert.id}
-                title={concert.title}
-                artist={concert.artist}
-                date={concert.date}
-                time={concert.time}
-                venue={concert.venue}
-                image={concert.image}
-                price={concert.tickets[concert.tickets.length - 1].price}
-                category={concert.category}
-                isFeatured={concert.isFeatured}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredConcerts.map((concert) => (
+                <ConcertCardDB key={concert.id} concert={concert} />
+              ))}
+            </div>
+          )}
 
           <div className="text-center mt-10">
             <Link to="/concerts">

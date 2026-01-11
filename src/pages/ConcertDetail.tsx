@@ -1,21 +1,31 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, MapPin, Clock, ArrowLeft, Check, Minus, Plus, ShoppingCart } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowLeft, Check, Minus, Plus, ShoppingCart, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CountdownTimer from "@/components/CountdownTimer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getConcertById } from "@/data/concerts";
+import { useConcertById } from "@/hooks/useConcerts";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
 
 const ConcertDetail = () => {
   const { id } = useParams();
-  const concert = getConcertById(id || "");
+  const { data: concert, isLoading, error } = useConcertById(id || "");
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
 
-  if (!concert) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!concert || error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -36,11 +46,20 @@ const ConcertDetail = () => {
     }).format(price);
   };
 
-  const selectedTicketData = concert.tickets.find((t) => t.id === selectedTicket);
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return format(date, "d MMMM yyyy", { locale: localeId });
+  };
+
+  const formatTime = (timeStr: string) => {
+    return timeStr.slice(0, 5) + " WIB";
+  };
+
+  const selectedTicketData = concert.ticket_types.find((t) => t.id === selectedTicket);
   const totalPrice = selectedTicketData ? selectedTicketData.price * quantity : 0;
 
   // Parse date for countdown
-  const concertDate = new Date("2026-02-15T19:00:00");
+  const concertDate = new Date(`${concert.date}T${concert.time}`);
 
   const handleBuyTicket = () => {
     if (!selectedTicket) {
@@ -60,7 +79,7 @@ const ConcertDetail = () => {
       <section className="relative pt-20">
         <div className="absolute inset-0 h-[60vh]">
           <img
-            src={concert.image}
+            src={concert.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1920&auto=format&fit=crop"}
             alt={concert.title}
             className="w-full h-full object-cover opacity-40"
           />
@@ -98,7 +117,7 @@ const ConcertDetail = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Tanggal</p>
-                    <p className="text-foreground font-medium">{concert.date}</p>
+                    <p className="text-foreground font-medium">{formatDate(concert.date)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
@@ -107,7 +126,7 @@ const ConcertDetail = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Waktu</p>
-                    <p className="text-foreground font-medium">{concert.time}</p>
+                    <p className="text-foreground font-medium">{formatTime(concert.time)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
@@ -137,7 +156,7 @@ const ConcertDetail = () => {
               <div className="glass-card p-6 rounded-2xl">
                 <h3 className="font-display text-xl font-bold mb-3">Tentang Konser</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  {concert.description}
+                  {concert.description || "Deskripsi konser belum tersedia."}
                 </p>
               </div>
             </div>
@@ -147,7 +166,7 @@ const ConcertDetail = () => {
               <h3 className="font-display text-2xl font-bold mb-6">Pilih Tiket</h3>
 
               <div className="space-y-4 mb-6">
-                {concert.tickets.map((ticket) => (
+                {concert.ticket_types.map((ticket) => (
                   <div
                     key={ticket.id}
                     onClick={() => setSelectedTicket(ticket.id)}
@@ -169,7 +188,7 @@ const ConcertDetail = () => {
                           {formatPrice(ticket.price)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {ticket.available} tersedia
+                          {ticket.available_quantity} tersedia
                         </p>
                       </div>
                     </div>
