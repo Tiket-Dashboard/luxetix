@@ -14,7 +14,231 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      concerts: {
+        Row: {
+          artist: string
+          category: string
+          city: string
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          is_featured: boolean | null
+          time: string
+          title: string
+          updated_at: string
+          venue: string
+        }
+        Insert: {
+          artist: string
+          category?: string
+          city: string
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          time: string
+          title: string
+          updated_at?: string
+          venue: string
+        }
+        Update: {
+          artist?: string
+          category?: string
+          city?: string
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          time?: string
+          title?: string
+          updated_at?: string
+          venue?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          concert_id: string | null
+          created_at: string
+          id: string
+          order_id: string
+          quantity: number
+          subtotal: number
+          ticket_type_id: string | null
+          unit_price: number
+        }
+        Insert: {
+          concert_id?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          quantity?: number
+          subtotal: number
+          ticket_type_id?: string | null
+          unit_price: number
+        }
+        Update: {
+          concert_id?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          quantity?: number
+          subtotal?: number
+          ticket_type_id?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_concert_id_fkey"
+            columns: ["concert_id"]
+            isOneToOne: false
+            referencedRelation: "concerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_ticket_type_id_fkey"
+            columns: ["ticket_type_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          order_number: string
+          payment_id: string | null
+          payment_method: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          order_number: string
+          payment_id?: string | null
+          payment_method?: string | null
+          status?: string
+          total_amount: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          order_number?: string
+          payment_id?: string | null
+          payment_method?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ticket_types: {
+        Row: {
+          available_quantity: number
+          benefits: string[] | null
+          concert_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price: number
+          total_quantity: number
+        }
+        Insert: {
+          available_quantity?: number
+          benefits?: string[] | null
+          concert_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price: number
+          total_quantity?: number
+        }
+        Update: {
+          available_quantity?: number
+          benefits?: string[] | null
+          concert_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price?: number
+          total_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_types_concert_id_fkey"
+            columns: ["concert_id"]
+            isOneToOne: false
+            referencedRelation: "concerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
