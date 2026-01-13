@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Calendar, MapPin, Clock, ArrowLeft, Check, Minus, Plus, ShoppingCart, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -13,6 +13,7 @@ import { id as localeId } from "date-fns/locale";
 
 const ConcertDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { data: concert, isLoading, error } = useConcertById(id || "");
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -66,9 +67,8 @@ const ConcertDetail = () => {
       toast.error("Pilih tiket terlebih dahulu");
       return;
     }
-    toast.success("Tiket ditambahkan ke keranjang!", {
-      description: `${quantity}x ${selectedTicketData?.name} - ${formatPrice(totalPrice)}`,
-    });
+    // Navigate to checkout
+    navigate(`/checkout/${id}?ticket=${selectedTicket}&qty=${quantity}`);
   };
 
   return (

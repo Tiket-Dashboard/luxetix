@@ -42,19 +42,17 @@
 - [ ] **Integrasi Pembayaran Xendit**
   - [ ] Setup Xendit SDK
   - [ ] Webhook untuk konfirmasi pembayaran
-  - [ ] Halaman checkout dengan form pembayaran
   - [ ] Status pembayaran real-time
 
-- [ ] **Flow Pembelian Tiket**
-  - [ ] Form pemilihan jumlah tiket
-  - [ ] Form data pembeli (nama, email, telepon)
-  - [ ] Ringkasan pesanan sebelum bayar
-  - [ ] Halaman sukses setelah pembayaran
+- [x] **Flow Pembelian Tiket** ✅
+  - [x] Form pemilihan jumlah tiket
+  - [x] Form data pembeli (nama, email, telepon)
+  - [x] Ringkasan pesanan sebelum bayar
+  - [x] Halaman sukses setelah pembayaran
 
 - [ ] **E-Ticket & Konfirmasi**
   - [ ] Generate nomor tiket unik
   - [ ] QR Code untuk validasi tiket
-  - [ ] Halaman "Tiket Saya" untuk user
   - [ ] Email konfirmasi pembelian
 
 ### Prioritas Sedang
@@ -63,10 +61,11 @@
   - [ ] Upload dari admin dashboard
   - [ ] Optimisasi gambar (resize/compress)
 
-- [ ] **Profil Pengguna**
-  - [ ] Halaman edit profil
+- [x] **Profil Pengguna** ✅
+  - [x] Halaman profil dengan info user
+  - [x] Riwayat pembelian tiket
+  - [ ] Edit profil
   - [ ] Upload foto profil
-  - [ ] Riwayat pembelian tiket
 
 - [ ] **Fitur Admin Lanjutan**
   - [ ] Export data pesanan (CSV/Excel)
@@ -96,11 +95,11 @@
 | Database Schema | ✅ Done | 100% |
 | Authentication | ✅ Done | 100% |
 | Admin Dashboard | ✅ Done | 100% |
+| Ticket Purchase Flow | ✅ Done | 100% |
+| User Profile | ✅ Done | 80% |
 | Payment Gateway | ❌ Pending | 0% |
-| Ticket Purchase Flow | ❌ Pending | 0% |
 | E-Ticket Generation | ❌ Pending | 0% |
 | Image Upload | ❌ Pending | 0% |
-| User Profile | ❌ Pending | 0% |
 
 ---
 

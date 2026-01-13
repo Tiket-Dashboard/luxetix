@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Ticket, User } from "lucide-react";
+import { Menu, X, Ticket, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   const navLinks = [
     { name: "Beranda", path: "/" },
@@ -51,17 +53,39 @@ const Navbar = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/auth">
-              <Button variant="goldOutline" size="sm" className="gap-2">
-                <User className="w-4 h-4" />
-                Masuk
-              </Button>
-            </Link>
-            <Link to="/concerts">
-              <Button variant="gold" size="sm">
-                Beli Tiket
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/profile">
+                  <Button variant="goldOutline" size="sm" className="gap-2">
+                    <User className="w-4 h-4" />
+                    Profil
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Keluar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="goldOutline" size="sm" className="gap-2">
+                    <User className="w-4 h-4" />
+                    Masuk
+                  </Button>
+                </Link>
+                <Link to="/concerts">
+                  <Button variant="gold" size="sm">
+                    Beli Tiket
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -92,16 +116,40 @@ const Navbar = () => {
                 </Link>
               ))}
               <div className="flex flex-col gap-3 pt-4 border-t border-border/30">
-                <Link to="/auth" onClick={() => setIsOpen(false)}>
-                  <Button variant="goldOutline" className="w-full">
-                    Masuk
-                  </Button>
-                </Link>
-                <Link to="/concerts" onClick={() => setIsOpen(false)}>
-                  <Button variant="gold" className="w-full">
-                    Beli Tiket
-                  </Button>
-                </Link>
+                {user ? (
+                  <>
+                    <Link to="/profile" onClick={() => setIsOpen(false)}>
+                      <Button variant="goldOutline" className="w-full gap-2">
+                        <User className="w-4 h-4" />
+                        Profil Saya
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      className="w-full gap-2"
+                      onClick={() => {
+                        signOut();
+                        setIsOpen(false);
+                      }}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Keluar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth" onClick={() => setIsOpen(false)}>
+                      <Button variant="goldOutline" className="w-full">
+                        Masuk
+                      </Button>
+                    </Link>
+                    <Link to="/concerts" onClick={() => setIsOpen(false)}>
+                      <Button variant="gold" className="w-full">
+                        Beli Tiket
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
