@@ -20,6 +20,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminConcerts from "./pages/admin/AdminConcerts";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminValidation from "./pages/admin/AdminValidation";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,14 @@ const App = () => (
               element={
                 <AdminGuard>
                   <AdminOrders />
+                </AdminGuard>
+              }
+            />
+            <Route
+              path="/admin/validation"
+              element={
+                <AdminGuard>
+                  <AdminValidation />
                 </AdminGuard>
               }
             />

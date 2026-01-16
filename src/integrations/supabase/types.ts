@@ -70,34 +70,43 @@ export type Database = {
           concert_id: string | null
           created_at: string
           id: string
+          is_used: boolean | null
           order_id: string
           quantity: number
           subtotal: number
           ticket_code: string | null
           ticket_type_id: string | null
           unit_price: number
+          used_at: string | null
+          validated_by: string | null
         }
         Insert: {
           concert_id?: string | null
           created_at?: string
           id?: string
+          is_used?: boolean | null
           order_id: string
           quantity?: number
           subtotal: number
           ticket_code?: string | null
           ticket_type_id?: string | null
           unit_price: number
+          used_at?: string | null
+          validated_by?: string | null
         }
         Update: {
           concert_id?: string | null
           created_at?: string
           id?: string
+          is_used?: boolean | null
           order_id?: string
           quantity?: number
           subtotal?: number
           ticket_code?: string | null
           ticket_type_id?: string | null
           unit_price?: number
+          used_at?: string | null
+          validated_by?: string | null
         }
         Relationships: [
           {
