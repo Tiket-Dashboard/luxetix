@@ -33,6 +33,7 @@ import {
 import { Concert } from "@/types/database";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 const AdminConcerts = () => {
   const { data: concerts = [], isLoading } = useAdminConcerts();
@@ -230,15 +231,15 @@ const AdminConcerts = () => {
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="image_url">URL Gambar</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Gambar Konser</Label>
+                  <ImageUpload
+                    value={formData.image_url}
+                    onChange={(url) => setFormData({ ...formData, image_url: url })}
+                    folder="concerts"
+                  />
                 </div>
 
                 <div className="flex items-center gap-6">

@@ -73,6 +73,7 @@ export type Database = {
           order_id: string
           quantity: number
           subtotal: number
+          ticket_code: string | null
           ticket_type_id: string | null
           unit_price: number
         }
@@ -83,6 +84,7 @@ export type Database = {
           order_id: string
           quantity?: number
           subtotal: number
+          ticket_code?: string | null
           ticket_type_id?: string | null
           unit_price: number
         }
@@ -93,6 +95,7 @@ export type Database = {
           order_id?: string
           quantity?: number
           subtotal?: number
+          ticket_code?: string | null
           ticket_type_id?: string | null
           unit_price?: number
         }
