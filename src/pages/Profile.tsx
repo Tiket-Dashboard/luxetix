@@ -1,18 +1,26 @@
 import { Navigate, Link } from "react-router-dom";
-import { User, Mail, Phone, Calendar, MapPin, Ticket, Loader2, LogOut } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Ticket, Loader2, LogOut, QrCode } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserOrders, useUserProfile } from "@/hooks/useUserOrders";
+import { useUserOrdersWithTicketCodes, useUserProfile } from "@/hooks/useUserOrders";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import TicketQRCode from "@/components/TicketQRCode";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const Profile = () => {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useUserProfile();
-  const { data: orders = [], isLoading: ordersLoading } = useUserOrders();
+  const { data: orders = [], isLoading: ordersLoading } = useUserOrdersWithTicketCodes();
 
   if (authLoading) {
     return (
@@ -175,6 +183,49 @@ const Profile = () => {
                                   {formatCurrency(item.subtotal)}
                                 </span>
                               </div>
+
+                              {/* QR Code Button for Paid Orders */}
+                              {order.status === "paid" && item.ticket_code && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="goldOutline"
+                                      size="sm"
+                                      className="mt-3 gap-2"
+                                    >
+                                      <QrCode className="w-4 h-4" />
+                                      Lihat E-Ticket
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-sm">
+                                    <DialogHeader>
+                                      <DialogTitle className="font-display text-center">
+                                        E-Ticket
+                                      </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="flex flex-col items-center gap-4 py-4">
+                                      <TicketQRCode
+                                        ticketCode={item.ticket_code}
+                                        orderId={order.id}
+                                        size={200}
+                                      />
+                                      <div className="text-center">
+                                        <p className="font-semibold">{concert.title}</p>
+                                        <p className="text-sm text-primary">{concert.artist}</p>
+                                        <p className="text-sm text-muted-foreground mt-2">
+                                          {formatDate(concert.date)} • {concert.venue}
+                                        </p>
+                                        <p className="text-sm mt-2">
+                                          {item.quantity}x {item.ticket_types?.name}
+                                        </p>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground text-center">
+                                        Tunjukkan QR Code ini saat masuk venue
+                                      </p>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
                             </div>
                           </div>
                         );

@@ -13,6 +13,7 @@ interface OrderWithItems {
     quantity: number;
     unit_price: number;
     subtotal: number;
+    ticket_code?: string | null;
     ticket_types: {
       name: string;
       concerts: {
@@ -50,6 +51,7 @@ export const useUserOrders = () => {
             quantity,
             unit_price,
             subtotal,
+            ticket_code,
             ticket_types (
               name,
               concerts (
@@ -73,6 +75,10 @@ export const useUserOrders = () => {
     },
     enabled: !!user?.id,
   });
+};
+
+export const useUserOrdersWithTicketCodes = () => {
+  return useUserOrders();
 };
 
 export const useUserProfile = () => {

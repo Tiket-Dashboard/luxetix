@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, Calendar, MapPin, Ticket, Loader2, Copy, ArrowRight } from "lucide-react";
+import { CheckCircle, Calendar, MapPin, Ticket, Loader2, Copy, ArrowRight, QrCode } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import TicketQRCode from "@/components/TicketQRCode";
 
 const OrderSuccess = () => {
   const { orderId } = useParams();
@@ -21,6 +22,7 @@ const OrderSuccess = () => {
           *,
           order_items (
             *,
+            ticket_code,
             ticket_types (
               name,
               concerts (
@@ -165,6 +167,26 @@ const OrderSuccess = () => {
                   </span>
                 </div>
               </div>
+
+              {/* QR Code for E-Ticket */}
+              {order.status === "paid" && orderItem?.ticket_code && (
+                <div className="border-t border-border pt-4 mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <QrCode className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">E-Ticket QR Code</h3>
+                  </div>
+                  <div className="flex justify-center">
+                    <TicketQRCode
+                      ticketCode={orderItem.ticket_code}
+                      orderId={order.id}
+                      size={180}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center mt-3">
+                    Tunjukkan QR Code ini saat masuk venue
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -190,18 +212,33 @@ const OrderSuccess = () => {
           </div>
 
           {/* Status Note */}
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-8 animate-fade-in">
-            <div className="flex items-start gap-3">
-              <Ticket className="w-5 h-5 text-yellow-500 mt-0.5" />
-              <div>
-                <p className="font-semibold text-yellow-500">Menunggu Pembayaran</p>
-                <p className="text-sm text-muted-foreground">
-                  Silakan selesaikan pembayaran untuk mendapatkan e-ticket Anda.
-                  Integrasi pembayaran akan segera tersedia.
-                </p>
+          {order.status === "pending" && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-8 animate-fade-in">
+              <div className="flex items-start gap-3">
+                <Ticket className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-yellow-500">Menunggu Pembayaran</p>
+                  <p className="text-sm text-muted-foreground">
+                    Silakan selesaikan pembayaran untuk mendapatkan e-ticket dengan QR Code.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {order.status === "paid" && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-8 animate-fade-in">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-green-500">Pembayaran Berhasil</p>
+                  <p className="text-sm text-muted-foreground">
+                    E-Ticket Anda sudah siap! Simpan atau screenshot QR Code di atas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4 animate-fade-in">

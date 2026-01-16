@@ -50,20 +50,21 @@
   - [x] Ringkasan pesanan sebelum bayar
   - [x] Halaman sukses setelah pembayaran
 
-- [ ] **E-Ticket & Konfirmasi**
-  - [ ] Generate nomor tiket unik
-  - [ ] QR Code untuk validasi tiket
+- [x] **E-Ticket & Konfirmasi** ✅
+  - [x] Generate nomor tiket unik (ticket_code)
+  - [x] QR Code untuk validasi tiket
   - [ ] Email konfirmasi pembelian
 
 ### Prioritas Sedang
-- [ ] **Upload Gambar Konser**
-  - [ ] Integrasi Supabase Storage
-  - [ ] Upload dari admin dashboard
+- [x] **Upload Gambar Konser** ✅
+  - [x] Integrasi Supabase Storage
+  - [x] Upload dari admin dashboard
   - [ ] Optimisasi gambar (resize/compress)
 
 - [x] **Profil Pengguna** ✅
   - [x] Halaman profil dengan info user
   - [x] Riwayat pembelian tiket
+  - [x] QR Code e-ticket di profil
   - [ ] Edit profil
   - [ ] Upload foto profil
 
@@ -96,10 +97,10 @@
 | Authentication | ✅ Done | 100% |
 | Admin Dashboard | ✅ Done | 100% |
 | Ticket Purchase Flow | ✅ Done | 100% |
-| User Profile | ✅ Done | 80% |
+| User Profile | ✅ Done | 90% |
 | Payment Gateway | ❌ Pending | 0% |
-| E-Ticket Generation | ❌ Pending | 0% |
-| Image Upload | ❌ Pending | 0% |
+| E-Ticket Generation | ✅ Done | 75% |
+| Image Upload | ✅ Done | 80% |
 
 ---
 
