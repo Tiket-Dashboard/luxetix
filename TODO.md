@@ -68,9 +68,9 @@
   - [ ] Edit profil
   - [ ] Upload foto profil
 
-- [ ] **Fitur Admin Lanjutan**
+- [x] **Fitur Admin Lanjutan** ✅
   - [ ] Export data pesanan (CSV/Excel)
-  - [ ] Validasi/scan tiket
+  - [x] Validasi/scan tiket QR Code
   - [ ] Laporan penjualan
 
 ### Prioritas Rendah

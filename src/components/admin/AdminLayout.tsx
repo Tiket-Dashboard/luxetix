@@ -7,7 +7,8 @@ import {
   ShoppingCart, 
   LogOut, 
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  QrCode
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { title: "Dashboard", path: "/admin", icon: LayoutDashboard },
     { title: "Konser", path: "/admin/concerts", icon: Music2 },
     { title: "Pesanan", path: "/admin/orders", icon: ShoppingCart },
+    { title: "Validasi Tiket", path: "/admin/validation", icon: QrCode },
   ];
 
   const isActive = (path: string) => {
