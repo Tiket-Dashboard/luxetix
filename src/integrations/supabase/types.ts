@@ -14,56 +14,271 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_payments: {
+        Row: {
+          agent_id: string
+          commission_amount: number
+          created_at: string
+          gross_amount: number
+          id: string
+          net_amount: number
+          order_id: string | null
+          paid_at: string | null
+          status: string
+        }
+        Insert: {
+          agent_id: string
+          commission_amount: number
+          created_at?: string
+          gross_amount: number
+          id?: string
+          net_amount: number
+          order_id?: string | null
+          paid_at?: string | null
+          status?: string
+        }
+        Update: {
+          agent_id?: string
+          commission_amount?: number
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          order_id?: string | null
+          paid_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_payments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_registrations: {
+        Row: {
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          business_description: string | null
+          business_name: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          payment_data: Json | null
+          payment_id: string | null
+          payment_method: string | null
+          processed_at: string | null
+          processed_by: string | null
+          registration_fee: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          business_description?: string | null
+          business_name: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_data?: Json | null
+          payment_id?: string | null
+          payment_method?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          registration_fee: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          business_description?: string | null
+          business_name?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_data?: Json | null
+          payment_id?: string | null
+          payment_method?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          registration_fee?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      agent_settings: {
+        Row: {
+          created_at: string
+          default_max_events: number
+          id: string
+          max_events_before_auto_approve: number
+          platform_commission_percent: number
+          registration_fee: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_max_events?: number
+          id?: string
+          max_events_before_auto_approve?: number
+          platform_commission_percent?: number
+          registration_fee?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_max_events?: number
+          id?: string
+          max_events_before_auto_approve?: number
+          platform_commission_percent?: number
+          registration_fee?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agents: {
+        Row: {
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          business_description: string | null
+          business_name: string
+          created_at: string
+          id: string
+          is_auto_approve: boolean
+          max_events: number
+          registration_payment_id: string | null
+          registration_status: string
+          successful_events_count: number
+          total_commission_paid: number
+          total_earnings: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          business_description?: string | null
+          business_name: string
+          created_at?: string
+          id?: string
+          is_auto_approve?: boolean
+          max_events?: number
+          registration_payment_id?: string | null
+          registration_status?: string
+          successful_events_count?: number
+          total_commission_paid?: number
+          total_earnings?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          business_description?: string | null
+          business_name?: string
+          created_at?: string
+          id?: string
+          is_auto_approve?: boolean
+          max_events?: number
+          registration_payment_id?: string | null
+          registration_status?: string
+          successful_events_count?: number
+          total_commission_paid?: number
+          total_earnings?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       concerts: {
         Row: {
+          agent_id: string | null
           artist: string
           category: string
           city: string
           created_at: string
           date: string
           description: string | null
+          event_status: Database["public"]["Enums"]["event_status"]
           id: string
           image_url: string | null
           is_active: boolean | null
           is_featured: boolean | null
+          platform_commission_percent: number | null
+          rejection_reason: string | null
           time: string
           title: string
           updated_at: string
           venue: string
         }
         Insert: {
+          agent_id?: string | null
           artist: string
           category?: string
           city: string
           created_at?: string
           date: string
           description?: string | null
+          event_status?: Database["public"]["Enums"]["event_status"]
           id?: string
           image_url?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          platform_commission_percent?: number | null
+          rejection_reason?: string | null
           time: string
           title: string
           updated_at?: string
           venue: string
         }
         Update: {
+          agent_id?: string | null
           artist?: string
           category?: string
           city?: string
           created_at?: string
           date?: string
           description?: string | null
+          event_status?: Database["public"]["Enums"]["event_status"]
           id?: string
           image_url?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          platform_commission_percent?: number | null
+          rejection_reason?: string | null
           time?: string
           title?: string
           updated_at?: string
           venue?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "concerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -190,6 +405,8 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          status: Database["public"]["Enums"]["user_status"]
+          status_message: string | null
           updated_at: string
           user_id: string
         }
@@ -199,6 +416,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          status_message?: string | null
           updated_at?: string
           user_id: string
         }
@@ -208,6 +427,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          status_message?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -290,9 +511,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_agent: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "agent"
+      event_status:
+        | "draft"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "cancelled"
+      user_status: "active" | "suspended" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -420,7 +649,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "agent"],
+      event_status: [
+        "draft",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "cancelled",
+      ],
+      user_status: ["active", "suspended", "inactive"],
     },
   },
 } as const
