@@ -24,6 +24,13 @@ import AdminValidation from "./pages/admin/AdminValidation";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAgents from "./pages/admin/AdminAgents";
 
+// Agent pages
+import AgentRegister from "./pages/AgentRegister";
+import AgentDashboard from "./pages/agent/AgentDashboard";
+import AgentEvents from "./pages/agent/AgentEvents";
+import AgentEventCreate from "./pages/agent/AgentEventCreate";
+import AgentEarnings from "./pages/agent/AgentEarnings";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -101,6 +108,13 @@ const App = () => (
                 </AdminGuard>
               }
             />
+
+            {/* Agent routes */}
+            <Route path="/agent/register" element={<AgentRegister />} />
+            <Route path="/agent" element={<AgentDashboard />} />
+            <Route path="/agent/events" element={<AgentEvents />} />
+            <Route path="/agent/events/new" element={<AgentEventCreate />} />
+            <Route path="/agent/earnings" element={<AgentEarnings />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
