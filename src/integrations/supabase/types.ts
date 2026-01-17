@@ -138,8 +138,10 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          expires_at: string | null
           id: string
           order_number: string
+          payment_data: Json | null
           payment_id: string | null
           payment_method: string | null
           status: string
@@ -152,8 +154,10 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          expires_at?: string | null
           id?: string
           order_number: string
+          payment_data?: Json | null
           payment_id?: string | null
           payment_method?: string | null
           status?: string
@@ -166,8 +170,10 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          expires_at?: string | null
           id?: string
           order_number?: string
+          payment_data?: Json | null
           payment_id?: string | null
           payment_method?: string | null
           status?: string

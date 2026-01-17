@@ -1,14 +1,15 @@
-import { Navigate, Link } from "react-router-dom";
-import { User, Mail, Phone, Calendar, MapPin, Ticket, Loader2, LogOut, QrCode } from "lucide-react";
+import { Navigate, Link, useNavigate } from "react-router-dom";
+import { User, Mail, Phone, Calendar, MapPin, Ticket, Loader2, LogOut, QrCode, CreditCard, Clock } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserOrdersWithTicketCodes, useUserProfile } from "@/hooks/useUserOrders";
-import { format } from "date-fns";
+import { format, differenceInSeconds } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import TicketQRCode from "@/components/TicketQRCode";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,14 @@ const Profile = () => {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useUserProfile();
   const { data: orders = [], isLoading: ordersLoading } = useUserOrdersWithTicketCodes();
+  const navigate = useNavigate();
+  const [now, setNow] = useState(new Date());
+
+  // Update "now" every second for countdown
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (authLoading) {
     return (
@@ -46,7 +55,27 @@ const Profile = () => {
     return format(new Date(dateStr), "d MMMM yyyy", { locale: localeId });
   };
 
-  const getStatusBadge = (status: string) => {
+  const getTimeRemaining = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const expiryDate = new Date(expiresAt);
+    const seconds = differenceInSeconds(expiryDate, now);
+    if (seconds <= 0) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const isExpired = (expiresAt: string | null) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) <= now;
+  };
+
+  const getStatusBadge = (status: string, expiresAt: string | null) => {
+    // Check if pending and expired
+    if (status === "pending" && isExpired(expiresAt)) {
+      return <Badge className="bg-muted text-muted-foreground border-muted">Kadaluarsa</Badge>;
+    }
+
     const statusConfig: Record<string, { label: string; className: string }> = {
       pending: { label: "Menunggu Pembayaran", className: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30" },
       paid: { label: "Lunas", className: "bg-green-500/20 text-green-500 border-green-500/30" },
@@ -56,6 +85,10 @@ const Profile = () => {
 
     const config = statusConfig[status] || statusConfig.pending;
     return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  const handleContinuePayment = (orderId: string) => {
+    navigate(`/checkout?continue=${orderId}`);
   };
 
   const handleLogout = async () => {
@@ -126,121 +159,148 @@ const Profile = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {orders.map((order) => (
-                  <div key={order.id} className="glass-card rounded-xl overflow-hidden">
-                    {/* Order Header */}
-                    <div className="p-4 bg-secondary/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-primary text-sm">
-                          {order.order_number}
-                        </span>
-                        {getStatusBadge(order.status)}
+                {orders.map((order) => {
+                  const timeRemaining = getTimeRemaining(order.expires_at);
+                  const expired = isExpired(order.expires_at);
+                  const canContinuePayment = order.status === "pending" && !expired && timeRemaining;
+
+                  return (
+                    <div key={order.id} className="glass-card rounded-xl overflow-hidden">
+                      {/* Order Header */}
+                      <div className="p-4 bg-secondary/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <span className="font-mono text-primary text-sm">
+                            {order.order_number}
+                          </span>
+                          {getStatusBadge(order.status, order.expires_at)}
+                          {canContinuePayment && (
+                            <div className="flex items-center gap-1 text-yellow-500 text-sm">
+                              <Clock className="w-4 h-4" />
+                              <span>{timeRemaining}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatDate(order.created_at)}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDate(order.created_at)}
-                      </div>
-                    </div>
 
-                    {/* Order Items */}
-                    <div className="p-4 space-y-4">
-                      {order.order_items.map((item) => {
-                        const concert = item.ticket_types?.concerts;
-                        if (!concert) return null;
+                      {/* Order Items */}
+                      <div className="p-4 space-y-4">
+                        {order.order_items.map((item) => {
+                          const concert = item.ticket_types?.concerts;
+                          if (!concert) return null;
 
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex gap-4 items-start"
-                          >
-                            <img
-                              src={concert.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&auto=format&fit=crop"}
-                              alt={concert.title}
-                              className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover"
-                            />
-                            <div className="flex-1">
-                              <Link
-                                to={`/concert/${concert.id}`}
-                                className="font-bold hover:text-primary transition-colors"
-                              >
-                                {concert.title}
-                              </Link>
-                              <p className="text-sm text-primary">
-                                {concert.artist}
-                              </p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                <Calendar className="w-3 h-3" />
-                                {formatDate(concert.date)}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <MapPin className="w-3 h-3" />
-                                {concert.venue}, {concert.city}
-                              </div>
-                              <div className="mt-2 text-sm">
-                                <span className="text-muted-foreground">
-                                  {item.quantity}x {item.ticket_types?.name}
-                                </span>
-                                <span className="ml-2 font-semibold">
-                                  {formatCurrency(item.subtotal)}
-                                </span>
-                              </div>
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex gap-4 items-start"
+                            >
+                              <img
+                                src={concert.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&auto=format&fit=crop"}
+                                alt={concert.title}
+                                className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover"
+                              />
+                              <div className="flex-1">
+                                <Link
+                                  to={`/concert/${concert.id}`}
+                                  className="font-bold hover:text-primary transition-colors"
+                                >
+                                  {concert.title}
+                                </Link>
+                                <p className="text-sm text-primary">
+                                  {concert.artist}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {formatDate(concert.date)}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3" />
+                                  {concert.venue}, {concert.city}
+                                </div>
+                                <div className="mt-2 text-sm">
+                                  <span className="text-muted-foreground">
+                                    {item.quantity}x {item.ticket_types?.name}
+                                  </span>
+                                  <span className="ml-2 font-semibold">
+                                    {formatCurrency(item.subtotal)}
+                                  </span>
+                                </div>
 
-                              {/* QR Code Button for Paid Orders */}
-                              {order.status === "paid" && item.ticket_code && (
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="goldOutline"
-                                      size="sm"
-                                      className="mt-3 gap-2"
-                                    >
-                                      <QrCode className="w-4 h-4" />
-                                      Lihat E-Ticket
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="max-w-sm">
-                                    <DialogHeader>
-                                      <DialogTitle className="font-display text-center">
-                                        E-Ticket
-                                      </DialogTitle>
-                                    </DialogHeader>
-                                    <div className="flex flex-col items-center gap-4 py-4">
-                                      <TicketQRCode
-                                        ticketCode={item.ticket_code}
-                                        orderId={order.id}
-                                        size={200}
-                                      />
-                                      <div className="text-center">
-                                        <p className="font-semibold">{concert.title}</p>
-                                        <p className="text-sm text-primary">{concert.artist}</p>
-                                        <p className="text-sm text-muted-foreground mt-2">
-                                          {formatDate(concert.date)} • {concert.venue}
-                                        </p>
-                                        <p className="text-sm mt-2">
-                                          {item.quantity}x {item.ticket_types?.name}
+                                {/* QR Code Button for Paid Orders */}
+                                {order.status === "paid" && item.ticket_code && (
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="goldOutline"
+                                        size="sm"
+                                        className="mt-3 gap-2"
+                                      >
+                                        <QrCode className="w-4 h-4" />
+                                        Lihat E-Ticket
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-sm">
+                                      <DialogHeader>
+                                        <DialogTitle className="font-display text-center">
+                                          E-Ticket
+                                        </DialogTitle>
+                                      </DialogHeader>
+                                      <div className="flex flex-col items-center gap-4 py-4">
+                                        <TicketQRCode
+                                          ticketCode={item.ticket_code}
+                                          orderId={order.id}
+                                          size={200}
+                                        />
+                                        <div className="text-center">
+                                          <p className="font-semibold">{concert.title}</p>
+                                          <p className="text-sm text-primary">{concert.artist}</p>
+                                          <p className="text-sm text-muted-foreground mt-2">
+                                            {formatDate(concert.date)} • {concert.venue}
+                                          </p>
+                                          <p className="text-sm mt-2">
+                                            {item.quantity}x {item.ticket_types?.name}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground text-center">
+                                          Tunjukkan QR Code ini saat masuk venue
                                         </p>
                                       </div>
-                                      <p className="text-xs text-muted-foreground text-center">
-                                        Tunjukkan QR Code ini saat masuk venue
-                                      </p>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
+                                    </DialogContent>
+                                  </Dialog>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
 
-                    {/* Order Footer */}
-                    <div className="p-4 border-t border-border flex justify-between items-center">
-                      <span className="text-muted-foreground">Total</span>
-                      <span className="text-xl font-bold text-gradient-gold">
-                        {formatCurrency(order.total_amount)}
-                      </span>
+                      {/* Order Footer */}
+                      <div className="p-4 border-t border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                          <span className="text-muted-foreground">Total</span>
+                          <span className="ml-2 text-xl font-bold text-gradient-gold">
+                            {formatCurrency(order.total_amount)}
+                          </span>
+                        </div>
+                        
+                        {/* Continue Payment Button */}
+                        {canContinuePayment && (
+                          <Button
+                            variant="gold"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => handleContinuePayment(order.id)}
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Lanjutkan Pembayaran
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

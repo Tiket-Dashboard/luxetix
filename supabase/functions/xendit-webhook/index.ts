@@ -7,6 +7,10 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("=== Webhook received ===");
+  console.log("Method:", req.method);
+  console.log("URL:", req.url);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -17,17 +21,18 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    console.log("Webhook received:", JSON.stringify(body, null, 2));
+    console.log("Webhook body:", JSON.stringify(body, null, 2));
 
     // Determine webhook type and extract order_id
     let orderId: string | null = null;
     let status: string = "pending";
     let paymentMethod: string | null = null;
 
-    // Virtual Account callback
-    if (body.callback_virtual_account_id || body.external_id) {
+    // Virtual Account callback - check multiple possible fields
+    if (body.callback_virtual_account_id || body.external_id || body.owner_id) {
       orderId = body.external_id;
-      if (body.status === "COMPLETED" || body.payment_status === "PAID") {
+      if (body.status === "COMPLETED" || body.payment_status === "PAID" || body.status === "ACTIVE") {
+        // For VA, payment is complete when we receive the callback
         status = "paid";
       }
       paymentMethod = "VA";
@@ -41,31 +46,40 @@ serve(async (req) => {
       if (ewalletStatus === "SUCCEEDED" || ewalletStatus === "COMPLETED") {
         status = "paid";
       } else if (ewalletStatus === "FAILED" || ewalletStatus === "EXPIRED") {
-        status = "failed";
+        status = "expired";
       }
       paymentMethod = "EWALLET";
       console.log("E-wallet callback for order:", orderId, "Status:", status);
     }
 
-    // QRIS callback
-    if (body.qr_code?.reference_id) {
-      orderId = body.qr_code.reference_id;
-      if (body.status === "COMPLETED") {
+    // QRIS callback - handle different payload structures
+    if (body.qr_code?.reference_id || (body.event === "qr.payment" && body.data?.reference_id)) {
+      orderId = body.qr_code?.reference_id || body.data?.reference_id;
+      const qrisStatus = body.status || body.data?.status;
+      if (qrisStatus === "COMPLETED" || qrisStatus === "SUCCEEDED") {
         status = "paid";
       }
       paymentMethod = "QRIS";
       console.log("QRIS callback for order:", orderId, "Status:", status);
     }
 
+    // FVA (Fixed Virtual Account) paid callback
+    if (body.payment_id && body.external_id && body.paid_amount) {
+      orderId = body.external_id;
+      status = "paid";
+      paymentMethod = "VA";
+      console.log("VA Paid callback for order:", orderId, "Amount:", body.paid_amount);
+    }
+
     if (!orderId) {
-      console.log("Could not determine order ID from webhook");
+      console.log("Could not determine order ID from webhook. Body keys:", Object.keys(body));
       return new Response(
         JSON.stringify({ success: true, message: "Webhook received but no order ID found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Update order status
+    // Fetch order
     const { data: order, error: fetchError } = await supabase
       .from("orders")
       .select("id, status")
@@ -73,16 +87,18 @@ serve(async (req) => {
       .single();
 
     if (fetchError || !order) {
-      console.log("Order not found:", orderId);
+      console.log("Order not found:", orderId, "Error:", fetchError?.message);
       return new Response(
         JSON.stringify({ success: true, message: "Order not found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Only update if status is changing
-    if (order.status !== status) {
-      const updateData: any = { status };
+    console.log("Found order:", order.id, "Current status:", order.status, "New status:", status);
+
+    // Only update if status is changing to paid (prevent downgrade)
+    if (order.status !== "paid" && status === "paid") {
+      const updateData: Record<string, unknown> = { status };
       if (paymentMethod) {
         updateData.payment_method = paymentMethod;
       }
@@ -99,30 +115,37 @@ serve(async (req) => {
 
       console.log("Order updated successfully:", orderId, "New status:", status);
 
-      // If payment is successful, generate ticket codes for order items
-      if (status === "paid") {
-        const { data: orderItems, error: itemsError } = await supabase
-          .from("order_items")
-          .select("id, ticket_code")
-          .eq("order_id", orderId);
+      // Generate ticket codes for order items
+      const { data: orderItems, error: itemsError } = await supabase
+        .from("order_items")
+        .select("id, ticket_code, quantity")
+        .eq("order_id", orderId);
 
-        if (!itemsError && orderItems) {
-          for (const item of orderItems) {
-            if (!item.ticket_code) {
+      if (!itemsError && orderItems) {
+        for (const item of orderItems) {
+          if (!item.ticket_code) {
+            // Generate unique ticket codes for each quantity
+            for (let i = 0; i < item.quantity; i++) {
               const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-              await supabase
-                .from("order_items")
-                .update({ ticket_code: ticketCode })
-                .eq("id", item.id);
-              console.log("Generated ticket code:", ticketCode, "for item:", item.id);
+              
+              // For first item, update the existing record
+              if (i === 0) {
+                await supabase
+                  .from("order_items")
+                  .update({ ticket_code: ticketCode })
+                  .eq("id", item.id);
+                console.log("Generated ticket code:", ticketCode, "for item:", item.id);
+              }
             }
           }
         }
       }
+    } else {
+      console.log("Status not changed. Current:", order.status, "Incoming:", status);
     }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, order_id: orderId, new_status: status }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

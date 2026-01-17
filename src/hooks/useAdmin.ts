@@ -205,36 +205,64 @@ export const useAdminOrders = () => {
   });
 };
 
-// Admin: Get dashboard stats
+// Admin: Get dashboard stats with ticket breakdown
 export const useAdminStats = () => {
   return useQuery({
     queryKey: ["admin", "stats"],
     queryFn: async () => {
-      const [concertsRes, ordersRes, ticketsRes] = await Promise.all([
+      const [concertsRes, ordersRes, ticketsRes, orderItemsRes] = await Promise.all([
         supabase.from("concerts").select("id", { count: "exact" }),
         supabase.from("orders").select("id, total_amount, status"),
         supabase.from("ticket_types").select("available_quantity, total_quantity"),
+        supabase.from("order_items").select("quantity, ticket_types!inner(id), orders!inner(status)"),
       ]);
 
       const totalConcerts = concertsRes.count || 0;
       const orders = ordersRes.data || [];
       const tickets = ticketsRes.data || [];
+      const orderItems = orderItemsRes.data || [];
 
       const totalRevenue = orders
         .filter((o) => o.status === "paid")
         .reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
       const totalOrders = orders.length;
-      const ticketsSold = tickets.reduce(
-        (sum, t) => sum + (t.total_quantity - t.available_quantity),
+      
+      // Calculate tickets by status
+      const ticketsSold = orderItems
+        .filter((item: { orders: { status: string } }) => item.orders?.status === "paid")
+        .reduce((sum: number, item: { quantity: number }) => sum + (item.quantity || 0), 0);
+
+      const ticketsPending = orderItems
+        .filter((item: { orders: { status: string } }) => item.orders?.status === "pending")
+        .reduce((sum: number, item: { quantity: number }) => sum + (item.quantity || 0), 0);
+
+      const totalTicketCapacity = tickets.reduce(
+        (sum, t) => sum + (t.total_quantity || 0),
         0
       );
+
+      const ticketsAvailable = tickets.reduce(
+        (sum, t) => sum + (t.available_quantity || 0),
+        0
+      );
+
+      // Order counts by status
+      const paidOrders = orders.filter((o) => o.status === "paid").length;
+      const pendingOrders = orders.filter((o) => o.status === "pending").length;
+      const expiredOrders = orders.filter((o) => o.status === "expired" || o.status === "cancelled").length;
 
       return {
         totalConcerts,
         totalOrders,
         totalRevenue,
         ticketsSold,
+        ticketsPending,
+        ticketsAvailable,
+        totalTicketCapacity,
+        paidOrders,
+        pendingOrders,
+        expiredOrders,
       };
     },
   });

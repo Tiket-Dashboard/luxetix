@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Payment expiration: 5 minutes
+const PAYMENT_EXPIRY_MINUTES = 5;
+
 interface PaymentRequest {
   order_id: string;
   amount: number;
@@ -56,6 +59,8 @@ serve(async (req) => {
       let paymentId;
       let paymentUrl;
 
+      const expirationDate = new Date(Date.now() + PAYMENT_EXPIRY_MINUTES * 60 * 1000);
+
       if (payment_method === "VA") {
         // Create Virtual Account
         const vaResponse = await fetch("https://api.xendit.co/callback_virtual_accounts", {
@@ -71,7 +76,7 @@ serve(async (req) => {
             expected_amount: amount,
             is_closed: true,
             is_single_use: true,
-            expiration_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+            expiration_date: expirationDate.toISOString(),
           }),
         });
 
@@ -132,7 +137,7 @@ serve(async (req) => {
             type: "DYNAMIC",
             currency: "IDR",
             amount: amount,
-            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            expires_at: expirationDate.toISOString(),
           }),
         });
 
@@ -147,13 +152,15 @@ serve(async (req) => {
         paymentUrl = paymentResult.qr_string;
       }
 
-      // Update order with payment info
+      // Update order with payment info and expiration
       const { error: updateError } = await supabase
         .from("orders")
         .update({
           payment_method: payment_method,
           payment_id: paymentId,
           status: "pending",
+          expires_at: expirationDate.toISOString(),
+          payment_data: paymentResult,
         })
         .eq("id", order_id);
 
@@ -168,6 +175,7 @@ serve(async (req) => {
           payment_url: paymentUrl,
           payment_method: payment_method,
           payment_data: paymentResult,
+          expires_at: expirationDate.toISOString(),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

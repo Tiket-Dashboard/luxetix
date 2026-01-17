@@ -1,4 +1,4 @@
-import { Music2, ShoppingCart, DollarSign, Ticket } from "lucide-react";
+import { Music2, ShoppingCart, DollarSign, Ticket, Clock, CheckCircle, XCircle, Package } from "lucide-react";
 import { useAdminStats } from "@/hooks/useAdmin";
 import AdminLayout from "@/components/admin/AdminLayout";
 
@@ -44,6 +44,54 @@ const AdminDashboard = () => {
     },
   ];
 
+  const ticketStatCards = [
+    {
+      title: "Tiket Terjual (Lunas)",
+      value: stats?.ticketsSold || 0,
+      icon: CheckCircle,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+    },
+    {
+      title: "Tiket Pending",
+      value: stats?.ticketsPending || 0,
+      icon: Clock,
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-500/10",
+    },
+    {
+      title: "Tiket Tersedia",
+      value: stats?.ticketsAvailable || 0,
+      icon: Package,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+    },
+  ];
+
+  const orderStatCards = [
+    {
+      title: "Pesanan Lunas",
+      value: stats?.paidOrders || 0,
+      icon: CheckCircle,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+    },
+    {
+      title: "Menunggu Pembayaran",
+      value: stats?.pendingOrders || 0,
+      icon: Clock,
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-500/10",
+    },
+    {
+      title: "Dibatalkan/Expired",
+      value: stats?.expiredOrders || 0,
+      icon: XCircle,
+      color: "text-red-500",
+      bgColor: "bg-red-500/10",
+    },
+  ];
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -56,7 +104,7 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {/* Stats Grid */}
+        {/* Main Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((stat, index) => (
             <div
@@ -78,6 +126,73 @@ const AdminDashboard = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Ticket Statistics */}
+        <div className="glass-card p-6 rounded-xl">
+          <h3 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+            <Ticket className="w-5 h-5 text-primary" />
+            Statistik Tiket
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {ticketStatCards.map((stat, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-lg border border-border bg-secondary/30"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {stat.title}
+                    </p>
+                    <p className="text-xl font-bold">
+                      {isLoading ? "..." : stat.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {stats && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">
+                Total Kapasitas: <span className="font-semibold text-foreground">{stats.totalTicketCapacity}</span> tiket
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Order Statistics */}
+        <div className="glass-card p-6 rounded-xl">
+          <h3 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-primary" />
+            Statistik Pesanan
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {orderStatCards.map((stat, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-lg border border-border bg-secondary/30"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {stat.title}
+                    </p>
+                    <p className="text-xl font-bold">
+                      {isLoading ? "..." : stat.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Quick Actions */}
