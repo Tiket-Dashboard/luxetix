@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Music2, 
-  Ticket, 
   ShoppingCart, 
   LogOut, 
   Menu,
   ChevronLeft,
-  QrCode
+  QrCode,
+  Users,
+  Building2,
+  Ticket
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +32,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { title: "Konser", path: "/admin/concerts", icon: Music2 },
     { title: "Pesanan", path: "/admin/orders", icon: ShoppingCart },
     { title: "Validasi Tiket", path: "/admin/validation", icon: QrCode },
+    { title: "Pengguna", path: "/admin/users", icon: Users },
+    { title: "Agent", path: "/admin/agents", icon: Building2 },
   ];
 
   const isActive = (path: string) => {
