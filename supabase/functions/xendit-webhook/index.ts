@@ -115,26 +115,87 @@ serve(async (req) => {
 
       console.log("Order updated successfully:", orderId, "New status:", status);
 
-      // Generate ticket codes for order items
+      // Get order items with concert info to check for agent events
       const { data: orderItems, error: itemsError } = await supabase
         .from("order_items")
-        .select("id, ticket_code, quantity")
+        .select(`
+          id, 
+          ticket_code, 
+          quantity, 
+          subtotal,
+          concert_id
+        `)
         .eq("order_id", orderId);
 
       if (!itemsError && orderItems) {
         for (const item of orderItems) {
+          // Generate ticket codes
           if (!item.ticket_code) {
-            // Generate unique ticket codes for each quantity
             for (let i = 0; i < item.quantity; i++) {
               const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
               
-              // For first item, update the existing record
               if (i === 0) {
                 await supabase
                   .from("order_items")
                   .update({ ticket_code: ticketCode })
                   .eq("id", item.id);
                 console.log("Generated ticket code:", ticketCode, "for item:", item.id);
+              }
+            }
+          }
+
+          // Get concert info for commission processing
+          if (item.concert_id) {
+            const { data: concert } = await supabase
+              .from("concerts")
+              .select("agent_id, platform_commission_percent")
+              .eq("id", item.concert_id)
+              .single();
+
+            // Process platform commission for agent events
+            if (concert?.agent_id) {
+              const grossAmount = item.subtotal || 0;
+              const commissionPercent = concert.platform_commission_percent || 10;
+              const commissionAmount = Math.floor(grossAmount * (commissionPercent / 100));
+              const netAmount = grossAmount - commissionAmount;
+
+              console.log("Processing agent payment - Gross:", grossAmount, "Commission:", commissionAmount, "Net:", netAmount);
+
+              // Create agent payment record
+              const { error: paymentError } = await supabase
+                .from("agent_payments")
+                .insert({
+                  agent_id: concert.agent_id,
+                  order_id: orderId,
+                  gross_amount: grossAmount,
+                  commission_amount: commissionAmount,
+                  net_amount: netAmount,
+                  status: "pending"
+                });
+
+              if (paymentError) {
+                console.error("Failed to create agent payment:", paymentError);
+              } else {
+                console.log("Agent payment created for agent:", concert.agent_id);
+
+                // Update agent's total earnings
+                const { data: agent, error: agentFetchError } = await supabase
+                  .from("agents")
+                  .select("total_earnings, total_commission_paid")
+                  .eq("id", concert.agent_id)
+                  .single();
+
+                if (!agentFetchError && agent) {
+                  await supabase
+                    .from("agents")
+                    .update({
+                      total_earnings: (agent.total_earnings || 0) + netAmount,
+                      total_commission_paid: (agent.total_commission_paid || 0) + commissionAmount
+                    })
+                    .eq("id", concert.agent_id);
+
+                  console.log("Updated agent earnings");
+                }
               }
             }
           }

@@ -23,6 +23,8 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminValidation from "./pages/admin/AdminValidation";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAgents from "./pages/admin/AdminAgents";
+import AdminEventApproval from "./pages/admin/AdminEventApproval";
+import AgentInfo from "./pages/AgentInfo";
 
 // Agent pages
 import AgentRegister from "./pages/AgentRegister";
@@ -50,6 +52,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/about" element={<About />} />
+            <Route path="/agent-info" element={<AgentInfo />} />
 
             {/* Admin routes */}
             <Route
@@ -105,6 +108,14 @@ const App = () => (
               element={
                 <AdminGuard>
                   <AdminAgents />
+                </AdminGuard>
+              }
+            />
+            <Route
+              path="/admin/event-approval"
+              element={
+                <AdminGuard>
+                  <AdminEventApproval />
                 </AdminGuard>
               }
             />

@@ -34,6 +34,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { title: "Validasi Tiket", path: "/admin/validation", icon: QrCode },
     { title: "Pengguna", path: "/admin/users", icon: Users },
     { title: "Agent", path: "/admin/agents", icon: Building2 },
+    { title: "Approval Event", path: "/admin/event-approval", icon: Ticket },
   ];
 
   const isActive = (path: string) => {
