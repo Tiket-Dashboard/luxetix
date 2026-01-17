@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Check, Loader2, User, Mail, Phone, Ticket, Calendar, MapPin } from "lucide-react";
+import { ArrowLeft, Check, Loader2, User, Mail, Phone, Calendar, MapPin } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { z } from "zod";
+import PaymentMethodSelector from "@/components/checkout/PaymentMethodSelector";
+import PaymentInstructions from "@/components/checkout/PaymentInstructions";
+import { useXenditPayment, PaymentMethod, BankCode, EwalletType } from "@/hooks/useXenditPayment";
 
 const checkoutSchema = z.object({
   name: z.string().trim().min(1, "Nama wajib diisi").max(100, "Nama maksimal 100 karakter"),
@@ -27,6 +30,7 @@ const Checkout = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { createPayment, isProcessing } = useXenditPayment();
 
   const ticketId = searchParams.get("ticket");
   const qty = parseInt(searchParams.get("qty") || "1", 10);
@@ -41,6 +45,13 @@ const Checkout = () => {
   });
   const [errors, setErrors] = useState<Partial<Record<keyof CheckoutForm, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Payment states
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [selectedBank, setSelectedBank] = useState<BankCode>("BCA");
+  const [selectedEwallet, setSelectedEwallet] = useState<EwalletType>("OVO");
+  const [paymentData, setPaymentData] = useState<any>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   // Pre-fill form with user data
   useEffect(() => {
@@ -144,16 +155,22 @@ const Checkout = () => {
       if (validateForm()) {
         setStep(2);
       }
+    } else if (step === 2) {
+      if (!paymentMethod) {
+        toast.error("Pilih metode pembayaran");
+        return;
+      }
+      handleCreateOrder();
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+  const handleCreateOrder = async () => {
+    if (!validateForm() || !paymentMethod) return;
 
     setIsSubmitting(true);
 
     try {
-      // Generate a temporary order number (will be replaced by trigger)
+      // Generate a temporary order number
       const tempOrderNumber = `TMP-${Date.now()}`;
       
       // Create order
@@ -187,8 +204,27 @@ const Checkout = () => {
 
       if (itemError) throw itemError;
 
-      // Navigate to success page
-      navigate(`/order-success/${order.id}`);
+      setOrderId(order.id);
+
+      // Create payment via Xendit
+      const paymentResult = await createPayment({
+        order_id: order.id,
+        amount: totalPrice,
+        customer_name: form.name,
+        customer_email: form.email,
+        customer_phone: form.phone,
+        payment_method: paymentMethod,
+        bank_code: paymentMethod === "VA" ? selectedBank : undefined,
+        ewallet_type: paymentMethod === "EWALLET" ? selectedEwallet : undefined,
+      });
+
+      if (paymentResult) {
+        setPaymentData(paymentResult.payment_data);
+        setStep(3);
+        toast.success("Pesanan berhasil dibuat!");
+      } else {
+        toast.error("Gagal membuat pembayaran");
+      }
     } catch (error: any) {
       console.error("Checkout error:", error);
       toast.error("Gagal membuat pesanan", {
@@ -215,24 +251,24 @@ const Checkout = () => {
           </Link>
 
           {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-4 mb-10">
-            {[1, 2].map((s) => (
-              <div key={s} className="flex items-center gap-3">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 mb-10">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="flex items-center gap-2 sm:gap-3">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold transition-colors text-sm sm:text-base ${
                     step >= s
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-muted-foreground"
                   }`}
                 >
-                  {step > s ? <Check className="w-5 h-5" /> : s}
+                  {step > s ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : s}
                 </div>
-                <span className={step >= s ? "text-foreground" : "text-muted-foreground"}>
-                  {s === 1 ? "Data Pembeli" : "Konfirmasi"}
+                <span className={`text-xs sm:text-sm ${step >= s ? "text-foreground" : "text-muted-foreground"}`}>
+                  {s === 1 ? "Data" : s === 2 ? "Pembayaran" : "Selesai"}
                 </span>
-                {s < 2 && (
+                {s < 3 && (
                   <div
-                    className={`w-16 h-0.5 ${
+                    className={`w-8 sm:w-16 h-0.5 ${
                       step > s ? "bg-primary" : "bg-border"
                     }`}
                   />
@@ -244,7 +280,7 @@ const Checkout = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2">
-              {step === 1 ? (
+              {step === 1 && (
                 <div className="glass-card rounded-2xl p-6 animate-fade-in">
                   <h2 className="font-display text-2xl font-bold mb-6">
                     Data Pembeli
@@ -314,39 +350,21 @@ const Checkout = () => {
                     Lanjutkan
                   </Button>
                 </div>
-              ) : (
+              )}
+
+              {step === 2 && (
                 <div className="glass-card rounded-2xl p-6 animate-fade-in">
                   <h2 className="font-display text-2xl font-bold mb-6">
-                    Konfirmasi Pesanan
+                    Metode Pembayaran
                   </h2>
 
-                  {/* Buyer Info */}
+                  {/* Order Summary */}
                   <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-                    <h3 className="font-semibold mb-3">Data Pembeli</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Nama</span>
-                        <span>{form.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Email</span>
-                        <span>{form.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Telepon</span>
-                        <span>{form.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order Details */}
-                  <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-                    <h3 className="font-semibold mb-3">Detail Pesanan</h3>
                     <div className="flex gap-4">
                       <img
                         src={concert.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&auto=format&fit=crop"}
                         alt={concert.title}
-                        className="w-24 h-24 rounded-lg object-cover"
+                        className="w-20 h-20 rounded-lg object-cover"
                       />
                       <div className="flex-1">
                         <h4 className="font-bold">{concert.title}</h4>
@@ -361,25 +379,23 @@ const Checkout = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Ticket Info */}
-                  <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-                    <h3 className="font-semibold mb-3">Tiket</h3>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{ticket.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {quantity} tiket × {formatCurrency(ticket.price)}
-                        </p>
-                      </div>
-                      <span className="font-bold text-primary">
-                        {formatCurrency(totalPrice)}
-                      </span>
+                    <div className="mt-3 pt-3 border-t border-border flex justify-between">
+                      <span className="text-sm">{ticket.name} × {quantity}</span>
+                      <span className="font-bold text-primary">{formatCurrency(totalPrice)}</span>
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
+                  {/* Payment Method Selector */}
+                  <PaymentMethodSelector
+                    selectedMethod={paymentMethod}
+                    onMethodChange={setPaymentMethod}
+                    selectedBank={selectedBank}
+                    onBankChange={setSelectedBank}
+                    selectedEwallet={selectedEwallet}
+                    onEwalletChange={setSelectedEwallet}
+                  />
+
+                  <div className="flex gap-4 mt-8">
                     <Button
                       variant="outline"
                       size="xl"
@@ -392,17 +408,46 @@ const Checkout = () => {
                       variant="premium"
                       size="xl"
                       className="flex-1"
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
+                      onClick={handleNext}
+                      disabled={isSubmitting || isProcessing || !paymentMethod}
                     >
-                      {isSubmitting ? (
+                      {isSubmitting || isProcessing ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin mr-2" />
                           Memproses...
                         </>
                       ) : (
-                        "Konfirmasi Pesanan"
+                        "Bayar Sekarang"
                       )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && paymentData && paymentMethod && orderId && (
+                <div className="glass-card rounded-2xl p-6 animate-fade-in">
+                  <PaymentInstructions
+                    paymentMethod={paymentMethod}
+                    paymentData={paymentData}
+                    orderId={orderId}
+                  />
+
+                  <div className="mt-8 flex flex-col gap-3">
+                    <Button
+                      variant="premium"
+                      size="xl"
+                      className="w-full"
+                      onClick={() => navigate(`/order-success/${orderId}`)}
+                    >
+                      Cek Status Pembayaran
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full"
+                      onClick={() => navigate("/profile")}
+                    >
+                      Lihat Pesanan Saya
                     </Button>
                   </div>
                 </div>
@@ -448,6 +493,19 @@ const Checkout = () => {
                     </span>
                   </div>
                 </div>
+
+                {step === 2 && paymentMethod && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Metode</span>
+                      <span className="font-medium">
+                        {paymentMethod === "VA" && `VA ${selectedBank}`}
+                        {paymentMethod === "EWALLET" && selectedEwallet}
+                        {paymentMethod === "QRIS" && "QRIS"}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
