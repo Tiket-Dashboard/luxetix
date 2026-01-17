@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+# 🎫 TiketKonser
 
-## Project info
+Platform pembelian tiket konser online dengan fitur e-ticket berbasis QR Code.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🌟 Fitur Utama
 
-## How can I edit this code?
+### Untuk Pengguna (User)
+- 🎵 Jelajahi konser dengan filter kategori & pencarian
+- 🎟️ Beli tiket dengan berbagai kategori (VIP, Regular, dll)
+- 📱 E-ticket dengan QR Code untuk validasi masuk
+- 👤 Profil dengan riwayat pembelian tiket
+- ⏰ Countdown timer untuk konser mendatang
 
-There are several ways of editing your application.
+### Untuk Admin
+- 📊 Dashboard statistik (konser, pesanan, pendapatan)
+- 🎤 Kelola konser (tambah, edit, hapus)
+- 🏷️ Kelola tipe tiket per konser
+- 🖼️ Upload gambar konser
+- 📋 Lihat semua pesanan
+- 📷 Validasi tiket dengan scan QR Code di venue
 
-**Use Lovable**
+## 👥 User Roles
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+| Role | Deskripsi |
+|------|-----------|
+| **User** | Pengguna umum - dapat menjelajahi konser, membeli tiket, dan melihat e-ticket |
+| **Admin** | Administrator - akses penuh ke dashboard, kelola konser & tiket, validasi tiket |
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tech Stack
 
-**Use your preferred IDE**
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: Tailwind CSS, shadcn/ui
+- **Backend**: Lovable Cloud
+- **Database**: PostgreSQL dengan RLS
+- **QR Code**: qrcode.react, html5-qrcode
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🚀 Cara Menjalankan
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+# Install dependencies
+npm install
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Run development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 📁 Struktur Folder
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+src/
+├── components/          # Komponen UI
+│   ├── admin/          # Komponen khusus admin
+│   └── ui/             # shadcn/ui components
+├── hooks/              # Custom React hooks
+├── pages/              # Halaman aplikasi
+│   └── admin/          # Halaman admin dashboard
+├── integrations/       # Integrasi external (Supabase)
+├── data/               # Data statis
+└── types/              # TypeScript types
+```
 
-**Use GitHub Codespaces**
+## 🔐 Setup Admin
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Untuk memberikan role admin ke user:
 
-## What technologies are used for this project?
+```sql
+INSERT INTO user_roles (user_id, role) 
+VALUES ('USER_ID_ANDA', 'admin');
+```
 
-This project is built with:
+## 📱 Halaman Utama
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Route | Deskripsi |
+|-------|-----------|
+| `/` | Landing page |
+| `/concerts` | Daftar semua konser |
+| `/concerts/:id` | Detail konser |
+| `/checkout/:id` | Halaman checkout |
+| `/order-success` | Konfirmasi pesanan |
+| `/auth` | Login & Register |
+| `/profile` | Profil & riwayat tiket |
+| `/admin` | Dashboard admin |
+| `/admin/concerts` | Kelola konser |
+| `/admin/orders` | Daftar pesanan |
+| `/admin/tickets` | Kelola tiket |
+| `/admin/validation` | Validasi QR tiket |
 
-## How can I deploy this project?
+## 🔗 Links
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- **Preview**: [TiketKonser App](https://luxetix.lovable.app)
+- **Documentation**: [TODO.md](./TODO.md)
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*Built with ❤️ using Lovable*
