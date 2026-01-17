@@ -1,1 +1,7 @@
 project_id = "lhpmocmkrzfujhlvgwsu"
+
+[functions.xendit-payment]
+verify_jwt = false
+
+[functions.xendit-webhook]
+verify_jwt = false
