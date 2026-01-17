@@ -8,6 +8,9 @@ interface OrderWithItems {
   total_amount: number;
   status: string;
   created_at: string;
+  expires_at: string | null;
+  payment_method: string | null;
+  payment_data: Record<string, unknown> | null;
   order_items: {
     id: string;
     quantity: number;
@@ -46,6 +49,9 @@ export const useUserOrders = () => {
           total_amount,
           status,
           created_at,
+          expires_at,
+          payment_method,
+          payment_data,
           order_items (
             id,
             quantity,
@@ -74,6 +80,7 @@ export const useUserOrders = () => {
       return data as unknown as OrderWithItems[];
     },
     enabled: !!user?.id,
+    refetchInterval: 10000, // Refetch every 10 seconds to check payment status
   });
 };
 

@@ -25,6 +25,34 @@ const checkoutSchema = z.object({
 
 type CheckoutForm = z.infer<typeof checkoutSchema>;
 
+interface ContinueOrderData {
+  id: string;
+  total_amount: number;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  payment_method: string | null;
+  payment_data: Record<string, unknown> | null;
+  expires_at: string | null;
+  order_items: {
+    quantity: number;
+    unit_price: number;
+    ticket_types: {
+      name: string;
+      concerts: {
+        id: string;
+        title: string;
+        artist: string;
+        date: string;
+        time: string;
+        venue: string;
+        city: string;
+        image_url: string | null;
+      };
+    };
+  }[];
+}
+
 const Checkout = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -32,6 +60,7 @@ const Checkout = () => {
   const { user } = useAuth();
   const { createPayment, isProcessing } = useXenditPayment();
 
+  const continueOrderId = searchParams.get("continue");
   const ticketId = searchParams.get("ticket");
   const qty = parseInt(searchParams.get("qty") || "1", 10);
 
@@ -50,13 +79,84 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [selectedBank, setSelectedBank] = useState<BankCode>("BCA");
   const [selectedEwallet, setSelectedEwallet] = useState<EwalletType>("OVO");
-  const [paymentData, setPaymentData] = useState<any>(null);
+  const [paymentData, setPaymentData] = useState<Record<string, unknown> | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  
+  // Continue payment state
+  const [continueOrder, setContinueOrder] = useState<ContinueOrderData | null>(null);
+  const [isContinueLoading, setIsContinueLoading] = useState(false);
+
+  // Fetch existing order for continue payment
+  useEffect(() => {
+    const fetchContinueOrder = async () => {
+      if (!continueOrderId) return;
+      
+      setIsContinueLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(`
+            id,
+            total_amount,
+            customer_name,
+            customer_email,
+            customer_phone,
+            payment_method,
+            payment_data,
+            expires_at,
+            order_items (
+              quantity,
+              unit_price,
+              ticket_types (
+                name,
+                concerts (
+                  id,
+                  title,
+                  artist,
+                  date,
+                  time,
+                  venue,
+                  city,
+                  image_url
+                )
+              )
+            )
+          `)
+          .eq("id", continueOrderId)
+          .single();
+
+        if (error) throw error;
+        
+        if (data) {
+          // Check if expired
+          if (data.expires_at && new Date(data.expires_at) <= new Date()) {
+            toast.error("Pesanan sudah kadaluarsa");
+            navigate("/profile");
+            return;
+          }
+          
+          setContinueOrder(data as unknown as ContinueOrderData);
+          setOrderId(data.id);
+          setPaymentData(data.payment_data as Record<string, unknown> | null);
+          setPaymentMethod((data.payment_method as PaymentMethod) || null);
+          setStep(3); // Go directly to payment instructions
+        }
+      } catch (error) {
+        console.error("Error fetching order:", error);
+        toast.error("Gagal memuat pesanan");
+        navigate("/profile");
+      } finally {
+        setIsContinueLoading(false);
+      }
+    };
+
+    fetchContinueOrder();
+  }, [continueOrderId, navigate]);
 
   // Pre-fill form with user data
   useEffect(() => {
     const fetchProfile = async () => {
-      if (user) {
+      if (user && !continueOrderId) {
         setForm((prev) => ({ ...prev, email: user.email || "" }));
         
         const { data: profile } = await supabase
@@ -75,12 +175,77 @@ const Checkout = () => {
       }
     };
     fetchProfile();
-  }, [user]);
+  }, [user, continueOrderId]);
 
-  if (isLoading) {
+  if (isLoading || isContinueLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // For continue payment flow
+  if (continueOrder && paymentData) {
+    const orderItem = continueOrder.order_items[0];
+    const orderConcert = orderItem?.ticket_types?.concerts;
+    
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-28 pb-20">
+          <div className="container mx-auto px-4 max-w-2xl">
+            <div className="glass-card rounded-2xl p-6 animate-fade-in">
+              <h2 className="font-display text-2xl font-bold mb-4 text-center">
+                Lanjutkan Pembayaran
+              </h2>
+              
+              {orderConcert && (
+                <div className="bg-secondary/50 rounded-xl p-4 mb-6">
+                  <div className="flex gap-4">
+                    <img
+                      src={orderConcert.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=200&auto=format&fit=crop"}
+                      alt={orderConcert.title}
+                      className="w-20 h-20 rounded-lg object-cover"
+                    />
+                    <div>
+                      <h4 className="font-bold">{orderConcert.title}</h4>
+                      <p className="text-primary text-sm">{orderConcert.artist}</p>
+                      <p className="text-sm mt-1">{orderItem.quantity}x {orderItem.ticket_types.name}</p>
+                      <p className="font-bold text-primary mt-1">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(continueOrder.total_amount)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <PaymentInstructions
+                paymentMethod={paymentMethod!}
+                paymentData={paymentData}
+                orderId={continueOrder.id}
+              />
+
+              <div className="mt-8 flex flex-col gap-3">
+                <Button
+                  variant="premium"
+                  size="xl"
+                  className="w-full"
+                  onClick={() => navigate(`/order-success/${continueOrder.id}`)}
+                >
+                  Cek Status Pembayaran
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => navigate("/profile")}
+                >
+                  Kembali ke Profil
+                </Button>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }
