@@ -12,6 +12,7 @@ const Navbar = () => {
   const navLinks = [
     { name: "Beranda", path: "/" },
     { name: "Konser", path: "/concerts" },
+    { name: "Jadi Agent", path: "/agent-info" },
     { name: "Tentang", path: "/about" },
   ];
 
