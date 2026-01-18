@@ -10,7 +10,8 @@ import {
   QrCode,
   Users,
   Building2,
-  Ticket
+  Ticket,
+  Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +36,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { title: "Pengguna", path: "/admin/users", icon: Users },
     { title: "Agent", path: "/admin/agents", icon: Building2 },
     { title: "Approval Event", path: "/admin/event-approval", icon: Ticket },
+    { title: "Penarikan Dana", path: "/admin/withdrawals", icon: Wallet },
   ];
 
   const isActive = (path: string) => {
