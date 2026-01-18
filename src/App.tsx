@@ -31,6 +31,7 @@ import AgentRegister from "./pages/AgentRegister";
 import AgentDashboard from "./pages/agent/AgentDashboard";
 import AgentEvents from "./pages/agent/AgentEvents";
 import AgentEventCreate from "./pages/agent/AgentEventCreate";
+import AgentEventDetail from "./pages/agent/AgentEventDetail";
 import AgentEarnings from "./pages/agent/AgentEarnings";
 
 const queryClient = new QueryClient();
@@ -125,6 +126,7 @@ const App = () => (
             <Route path="/agent" element={<AgentDashboard />} />
             <Route path="/agent/events" element={<AgentEvents />} />
             <Route path="/agent/events/new" element={<AgentEventCreate />} />
+            <Route path="/agent/events/:id" element={<AgentEventDetail />} />
             <Route path="/agent/earnings" element={<AgentEarnings />} />
 
             {/* Catch-all */}
