@@ -8,7 +8,8 @@ import {
   Menu,
   ChevronLeft,
   Ticket,
-  Home
+  Home,
+  Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,7 @@ const AgentLayout = ({ children }: AgentLayoutProps) => {
     { title: "Dashboard", path: "/agent", icon: LayoutDashboard },
     { title: "Event Saya", path: "/agent/events", icon: Calendar },
     { title: "Pendapatan", path: "/agent/earnings", icon: DollarSign },
+    { title: "Penarikan", path: "/agent/withdrawals", icon: Wallet },
   ];
 
   const isActive = (path: string) => {
