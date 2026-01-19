@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { 
   Loader2, 
@@ -8,7 +8,9 @@ import {
   Clock,
   ArrowRight,
   Wallet,
-  QrCode as QrCodeIcon
+  QrCode as QrCodeIcon,
+  RefreshCw,
+  AlertCircle
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -21,7 +23,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 
 interface AgentSettings {
@@ -47,6 +49,7 @@ const AgentRegister = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [step, setStep] = useState(1);
   const [businessName, setBusinessName] = useState("");
@@ -56,6 +59,8 @@ const AgentRegister = () => {
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("qris");
   const [paymentData, setPaymentData] = useState<any>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const hasInitialized = useRef(false);
 
   // Get agent settings
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -70,12 +75,14 @@ const AgentRegister = () => {
       if (error) throw error;
       return data as AgentSettings;
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes - settings don't change often
   });
 
-  // Check existing registration status
+  // Check existing registration status - only poll when waiting for payment
   const { data: status, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
-    queryKey: ["agent-registration-status"],
+    queryKey: ["agent-registration-status", user?.id],
     queryFn: async () => {
+      if (!user) return null;
       const { data, error } = await supabase.functions.invoke("agent-registration", {
         body: { action: "check_status" },
       });
@@ -84,8 +91,49 @@ const AgentRegister = () => {
       return data as RegistrationStatus;
     },
     enabled: !!user,
-    refetchInterval: 5000, // Poll every 5 seconds to check payment status
+    refetchInterval: isPolling ? 10000 : false, // Only poll when waiting for payment (every 10s)
+    staleTime: 5000,
+    refetchOnWindowFocus: false,
   });
+
+  // Check if registration is expired
+  const isRegistrationExpired = useCallback(() => {
+    if (!status?.registration?.expires_at) return false;
+    return new Date(status.registration.expires_at) < new Date();
+  }, [status?.registration?.expires_at]);
+
+  // Initialize step based on existing status - only once
+  useEffect(() => {
+    if (hasInitialized.current || !status) return;
+    
+    // If already an active agent, redirect
+    if (status.agent?.registration_status === "active") {
+      navigate("/agent", { replace: true });
+      return;
+    }
+
+    // If there's a pending registration with payment data and not expired
+    if (
+      status.registration?.status === "pending" && 
+      status.registration?.payment_data &&
+      !isRegistrationExpired()
+    ) {
+      setPaymentData(status.registration.payment_data);
+      setStep(3);
+      setIsPolling(true);
+    }
+    
+    hasInitialized.current = true;
+  }, [status, navigate, isRegistrationExpired]);
+
+  // Handle agent becoming active during polling
+  useEffect(() => {
+    if (status?.agent?.registration_status === "active" && isPolling) {
+      setIsPolling(false);
+      toast({ title: "Pembayaran berhasil!", description: "Akun agent Anda telah aktif" });
+      navigate("/agent", { replace: true });
+    }
+  }, [status?.agent?.registration_status, isPolling, navigate, toast]);
 
   // Registration mutation
   const registerMutation = useMutation({
@@ -109,6 +157,8 @@ const AgentRegister = () => {
     onSuccess: (data) => {
       setPaymentData(data.payment_data);
       setStep(3);
+      setIsPolling(true);
+      queryClient.invalidateQueries({ queryKey: ["agent-registration-status"] });
       toast({ title: "Registrasi berhasil dibuat", description: "Silakan lakukan pembayaran" });
     },
     onError: (error: Error) => {
@@ -124,22 +174,22 @@ const AgentRegister = () => {
     }).format(amount);
   };
 
-  // Redirect if already an active agent
-  useEffect(() => {
-    if (status?.agent?.registration_status === "active") {
-      navigate("/agent");
-    }
-  }, [status, navigate]);
+  const handleRetryPayment = () => {
+    // Reset state for new registration attempt
+    setStep(1);
+    setPaymentData(null);
+    setIsPolling(false);
+    hasInitialized.current = false;
+    queryClient.invalidateQueries({ queryKey: ["agent-registration-status"] });
+  };
 
-  // Show payment instructions if there's a pending registration
-  useEffect(() => {
-    if (status?.registration?.status === "pending" && status?.registration?.payment_data) {
-      setPaymentData(status.registration.payment_data);
-      setStep(3);
-    }
-  }, [status]);
+  const handleManualRefresh = () => {
+    refetchStatus();
+    toast({ title: "Status diperbarui" });
+  };
 
-  if (authLoading || settingsLoading || statusLoading) {
+  // Only show loading on initial load, not during polling
+  if (authLoading || settingsLoading || (statusLoading && !hasInitialized.current)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -434,45 +484,83 @@ const AgentRegister = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Total Pembayaran</p>
-                  <p className="text-3xl font-bold text-gradient-gold">
-                    {formatCurrency(settings?.registration_fee || 500000)}
-                  </p>
-                </div>
-
-                {paymentData.qr_string ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="bg-white p-4 rounded-lg">
-                      <QRCodeSVG value={paymentData.qr_string} size={200} />
-                    </div>
-                    <p className="text-sm text-muted-foreground text-center">
-                      Scan QR Code di atas menggunakan aplikasi e-wallet atau mobile banking Anda
-                    </p>
-                  </div>
-                ) : paymentData.account_number ? (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-secondary/50 text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Nomor Virtual Account</p>
-                      <p className="text-2xl font-mono font-bold">{paymentData.account_number}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Bank: {paymentData.bank_code}
+                {isRegistrationExpired() ? (
+                  // Expired registration
+                  <div className="text-center space-y-4">
+                    <AlertCircle className="w-16 h-16 text-destructive mx-auto" />
+                    <div>
+                      <h3 className="font-semibold text-destructive mb-2">Pembayaran Expired</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Waktu pembayaran telah habis. Silakan lakukan pendaftaran ulang.
                       </p>
                     </div>
-                    <p className="text-sm text-muted-foreground text-center">
-                      Transfer ke nomor VA di atas melalui ATM, mobile banking, atau internet banking
-                    </p>
+                    <Button variant="gold" onClick={handleRetryPayment} className="w-full">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Daftar Ulang
+                    </Button>
                   </div>
-                ) : null}
+                ) : (
+                  // Active payment
+                  <>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-2">Total Pembayaran</p>
+                      <p className="text-3xl font-bold text-gradient-gold">
+                        {formatCurrency(settings?.registration_fee || 500000)}
+                      </p>
+                    </div>
 
-                <div className="flex items-center justify-center gap-2 text-yellow-500">
-                  <Clock className="w-5 h-5" />
-                  <span className="text-sm">Menunggu pembayaran...</span>
-                </div>
+                    {paymentData.qr_string ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="bg-white p-4 rounded-lg">
+                          <QRCodeSVG value={paymentData.qr_string} size={200} />
+                        </div>
+                        <p className="text-sm text-muted-foreground text-center">
+                          Scan QR Code di atas menggunakan aplikasi e-wallet atau mobile banking Anda
+                        </p>
+                      </div>
+                    ) : paymentData.account_number ? (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                          <p className="text-sm text-muted-foreground mb-1">Nomor Virtual Account</p>
+                          <p className="text-2xl font-mono font-bold">{paymentData.account_number}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Bank: {paymentData.bank_code}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground text-center">
+                          Transfer ke nomor VA di atas melalui ATM, mobile banking, atau internet banking
+                        </p>
+                      </div>
+                    ) : null}
 
-                <p className="text-xs text-muted-foreground text-center">
-                  Halaman ini akan otomatis terupdate setelah pembayaran berhasil
-                </p>
+                    <div className="flex items-center justify-center gap-2 text-yellow-500">
+                      <Clock className="w-5 h-5 animate-pulse" />
+                      <span className="text-sm">Menunggu pembayaran...</span>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        onClick={handleManualRefresh} 
+                        className="flex-1"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Cek Status
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        onClick={handleRetryPayment} 
+                        className="flex-1 text-muted-foreground"
+                      >
+                        Batal & Daftar Ulang
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground text-center">
+                      Status akan otomatis diperbarui setiap 10 detik
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
