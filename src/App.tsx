@@ -25,6 +25,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAgents from "./pages/admin/AdminAgents";
 import AdminEventApproval from "./pages/admin/AdminEventApproval";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AgentInfo from "./pages/AgentInfo";
 
 // Agent pages
@@ -32,6 +33,7 @@ import AgentRegister from "./pages/AgentRegister";
 import AgentDashboard from "./pages/agent/AgentDashboard";
 import AgentEvents from "./pages/agent/AgentEvents";
 import AgentEventCreate from "./pages/agent/AgentEventCreate";
+import AgentEventEdit from "./pages/agent/AgentEventEdit";
 import AgentEventDetail from "./pages/agent/AgentEventDetail";
 import AgentEarnings from "./pages/agent/AgentEarnings";
 import AgentWithdrawals from "./pages/agent/AgentWithdrawals";
@@ -130,6 +132,14 @@ const App = () => (
                 </AdminGuard>
               }
             />
+            <Route
+              path="/admin/analytics"
+              element={
+                <AdminGuard>
+                  <AdminAnalytics />
+                </AdminGuard>
+              }
+            />
 
             {/* Agent routes */}
             <Route path="/agent/register" element={<AgentRegister />} />
@@ -137,6 +147,7 @@ const App = () => (
             <Route path="/agent/events" element={<AgentEvents />} />
             <Route path="/agent/events/new" element={<AgentEventCreate />} />
             <Route path="/agent/events/:id" element={<AgentEventDetail />} />
+            <Route path="/agent/events/:id/edit" element={<AgentEventEdit />} />
             <Route path="/agent/earnings" element={<AgentEarnings />} />
             <Route path="/agent/withdrawals" element={<AgentWithdrawals />} />
 

@@ -11,7 +11,8 @@ import {
   Users,
   Building2,
   Ticket,
-  Wallet
+  Wallet,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +31,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const menuItems = [
     { title: "Dashboard", path: "/admin", icon: LayoutDashboard },
+    { title: "Analytics", path: "/admin/analytics", icon: BarChart3 },
     { title: "Konser", path: "/admin/concerts", icon: Music2 },
     { title: "Pesanan", path: "/admin/orders", icon: ShoppingCart },
     { title: "Validasi Tiket", path: "/admin/validation", icon: QrCode },
