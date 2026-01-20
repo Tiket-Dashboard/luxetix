@@ -3,18 +3,48 @@ import { supabase } from "@/integrations/supabase/client";
 import { Concert, TicketType } from "@/types/database";
 import { toast } from "sonner";
 
-// Admin: Get all concerts (including inactive)
+// Extended concert type with agent info
+export interface ConcertWithAgent extends Concert {
+  agent_name?: string | null;
+}
+
+// Admin: Get all concerts (including inactive) with agent info
 export const useAdminConcerts = () => {
   return useQuery({
     queryKey: ["admin", "concerts"],
-    queryFn: async (): Promise<Concert[]> => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<ConcertWithAgent[]> => {
+      // Get all concerts
+      const { data: concerts, error } = await supabase
         .from("concerts")
         .select("*")
-        .order("date", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data || [];
+
+      // Get agent IDs that have concerts
+      const agentIds = [...new Set(concerts?.filter(c => c.agent_id).map(c => c.agent_id) || [])];
+      
+      // Fetch agent names if there are any
+      let agentMap: Record<string, string> = {};
+      if (agentIds.length > 0) {
+        const { data: agents } = await supabase
+          .from("agents")
+          .select("id, business_name")
+          .in("id", agentIds);
+        
+        if (agents) {
+          agentMap = agents.reduce((acc, agent) => {
+            acc[agent.id] = agent.business_name;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+
+      // Merge agent names with concerts
+      return (concerts || []).map(concert => ({
+        ...concert,
+        agent_name: concert.agent_id ? agentMap[concert.agent_id] || null : null
+      }));
     },
   });
 };
@@ -24,10 +54,10 @@ export const useCreateConcert = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (concert: Omit<Concert, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (concert: Partial<Omit<Concert, "id" | "created_at" | "updated_at">>) => {
       const { data, error } = await supabase
         .from("concerts")
-        .insert(concert)
+        .insert(concert as any)
         .select()
         .single();
 
@@ -53,7 +83,7 @@ export const useUpdateConcert = () => {
     mutationFn: async ({ id, ...concert }: Partial<Concert> & { id: string }) => {
       const { data, error } = await supabase
         .from("concerts")
-        .update(concert)
+        .update(concert as any)
         .eq("id", id)
         .select()
         .single();
