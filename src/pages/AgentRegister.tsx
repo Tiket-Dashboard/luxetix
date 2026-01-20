@@ -5,13 +5,13 @@ import {
   Building2, 
   CreditCard, 
   CheckCircle, 
-  Clock,
   ArrowRight,
   Wallet,
   QrCode as QrCodeIcon,
   RefreshCw,
   AlertCircle
 } from "lucide-react";
+import PaymentCountdown from "@/components/PaymentCountdown";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -533,10 +533,13 @@ const AgentRegister = () => {
                       </div>
                     ) : null}
 
-                    <div className="flex items-center justify-center gap-2 text-yellow-500">
-                      <Clock className="w-5 h-5 animate-pulse" />
-                      <span className="text-sm">Menunggu pembayaran...</span>
-                    </div>
+                    {/* Payment Countdown Timer */}
+                    {status?.registration?.expires_at && (
+                      <PaymentCountdown 
+                        expiresAt={status.registration.expires_at}
+                        onExpired={() => refetchStatus()}
+                      />
+                    )}
 
                     <div className="flex gap-3">
                       <Button 
