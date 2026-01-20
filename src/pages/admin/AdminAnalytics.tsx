@@ -7,9 +7,13 @@ import {
   Users, 
   Calendar,
   BarChart3,
-  PieChart
+  PieChart,
+  Download,
+  FileSpreadsheet,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { 
   Select, 
   SelectContent, 
@@ -17,9 +21,16 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChartConfig,
   ChartContainer,
@@ -46,6 +57,8 @@ import { id as localeId } from "date-fns/locale";
 
 const AdminAnalytics = () => {
   const [dateRange, setDateRange] = useState("30");
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
   // Get analytics data
   const { data: analyticsData, isLoading } = useQuery({
@@ -203,6 +216,158 @@ const AdminAnalytics = () => {
     return Object.entries(methodMap).map(([name, value]) => ({ name, value }));
   };
 
+  // Export functions
+  const generateCSV = (data: any[], filename: string, headers: string[]) => {
+    const csvContent = [
+      headers.join(","),
+      ...data.map(row => headers.map(header => {
+        const value = row[header.toLowerCase().replace(/ /g, "_")] ?? "";
+        // Escape quotes and wrap in quotes if contains comma
+        const stringValue = String(value);
+        if (stringValue.includes(",") || stringValue.includes('"')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      }).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const exportOrdersReport = async () => {
+    setIsExporting(true);
+    try {
+      const days = parseInt(dateRange);
+      const startDate = subDays(new Date(), days);
+
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("*, order_items(*, ticket_types(name), concerts(title, artist, city))")
+        .gte("created_at", startDate.toISOString())
+        .eq("status", "paid")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const exportData = orders?.flatMap(order => 
+        order.order_items?.map((item: any) => ({
+          order_number: order.order_number,
+          tanggal: format(new Date(order.created_at), "dd/MM/yyyy HH:mm"),
+          customer: order.customer_name,
+          email: order.customer_email,
+          event: item.concerts?.title || "-",
+          artist: item.concerts?.artist || "-",
+          kota: item.concerts?.city || "-",
+          tipe_tiket: item.ticket_types?.name || "-",
+          jumlah: item.quantity,
+          harga_satuan: item.unit_price,
+          subtotal: item.subtotal,
+          metode_pembayaran: order.payment_method || "-",
+        })) || []
+      ) || [];
+
+      if (exportData.length === 0) {
+        toast({ title: "Tidak ada data untuk diexport", variant: "destructive" });
+        return;
+      }
+
+      generateCSV(exportData, "laporan_penjualan", [
+        "Order_Number", "Tanggal", "Customer", "Email", "Event", "Artist", 
+        "Kota", "Tipe_Tiket", "Jumlah", "Harga_Satuan", "Subtotal", "Metode_Pembayaran"
+      ]);
+
+      toast({ title: "Export berhasil", description: `${exportData.length} data berhasil diexport` });
+    } catch (error: any) {
+      toast({ title: "Gagal export", description: error.message, variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportSummaryReport = async () => {
+    setIsExporting(true);
+    try {
+      const summaryData = dailyRevenue.map(day => ({
+        tanggal: day.date,
+        pendapatan: day.revenue,
+        tiket_terjual: day.tickets,
+      }));
+
+      if (summaryData.length === 0) {
+        toast({ title: "Tidak ada data untuk diexport", variant: "destructive" });
+        return;
+      }
+
+      generateCSV(summaryData, "ringkasan_harian", ["Tanggal", "Pendapatan", "Tiket_Terjual"]);
+      toast({ title: "Export berhasil", description: `${summaryData.length} data berhasil diexport` });
+    } catch (error: any) {
+      toast({ title: "Gagal export", description: error.message, variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportEventReport = async () => {
+    setIsExporting(true);
+    try {
+      const days = parseInt(dateRange);
+      const startDate = subDays(new Date(), days);
+
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("*, order_items(*, ticket_types(name, price), concerts(id, title, artist, city, category))")
+        .gte("created_at", startDate.toISOString())
+        .eq("status", "paid");
+
+      if (error) throw error;
+
+      // Aggregate by event
+      const eventMap: Record<string, any> = {};
+
+      orders?.forEach(order => {
+        order.order_items?.forEach((item: any) => {
+          const eventId = item.concert_id;
+          if (!eventId) return;
+          
+          if (!eventMap[eventId]) {
+            eventMap[eventId] = {
+              event: item.concerts?.title || "-",
+              artist: item.concerts?.artist || "-",
+              kota: item.concerts?.city || "-",
+              kategori: item.concerts?.category || "-",
+              tiket_terjual: 0,
+              pendapatan: 0,
+            };
+          }
+          eventMap[eventId].tiket_terjual += item.quantity || 0;
+          eventMap[eventId].pendapatan += item.subtotal || 0;
+        });
+      });
+
+      const exportData = Object.values(eventMap).sort((a, b) => b.pendapatan - a.pendapatan);
+
+      if (exportData.length === 0) {
+        toast({ title: "Tidak ada data untuk diexport", variant: "destructive" });
+        return;
+      }
+
+      generateCSV(exportData, "laporan_per_event", [
+        "Event", "Artist", "Kota", "Kategori", "Tiket_Terjual", "Pendapatan"
+      ]);
+
+      toast({ title: "Export berhasil", description: `${exportData.length} event berhasil diexport` });
+    } catch (error: any) {
+      toast({ title: "Gagal export", description: error.message, variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const metrics = calculateMetrics();
   const dailyRevenue = calculateDailyRevenue();
   const salesByCategory = calculateSalesByCategory();
@@ -237,17 +402,45 @@ const AdminAnalytics = () => {
             <h2 className="font-display text-2xl font-bold">Analytics Dashboard</h2>
             <p className="text-muted-foreground">Statistik penjualan dan performa platform</p>
           </div>
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Pilih periode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 Hari Terakhir</SelectItem>
-              <SelectItem value="30">30 Hari Terakhir</SelectItem>
-              <SelectItem value="90">90 Hari Terakhir</SelectItem>
-              <SelectItem value="365">1 Tahun Terakhir</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isExporting}>
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportOrdersReport}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Laporan Penjualan (Detail)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportSummaryReport}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Ringkasan Harian
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportEventReport}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Laporan per Event
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Pilih periode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 Hari Terakhir</SelectItem>
+                <SelectItem value="30">30 Hari Terakhir</SelectItem>
+                <SelectItem value="90">90 Hari Terakhir</SelectItem>
+                <SelectItem value="365">1 Tahun Terakhir</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Key Metrics */}
