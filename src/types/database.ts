@@ -1,3 +1,5 @@
+export type EventStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled';
+
 export interface Concert {
   id: string;
   title: string;
@@ -11,6 +13,10 @@ export interface Concert {
   category: string;
   is_featured: boolean;
   is_active: boolean;
+  agent_id: string | null;
+  event_status: EventStatus;
+  rejection_reason: string | null;
+  platform_commission_percent: number | null;
   created_at: string;
   updated_at: string;
 }

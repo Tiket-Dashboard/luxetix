@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Ticket, Loader2, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Ticket, Loader2, Star, StarOff, Building2 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +29,10 @@ import {
   useCreateConcert,
   useUpdateConcert,
   useDeleteConcert,
+  ConcertWithAgent,
 } from "@/hooks/useAdmin";
 import { Concert } from "@/types/database";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import ImageUpload from "@/components/admin/ImageUpload";
@@ -74,7 +76,7 @@ const AdminConcerts = () => {
     setEditingConcert(null);
   };
 
-  const handleEdit = (concert: Concert) => {
+  const handleEdit = (concert: ConcertWithAgent) => {
     setEditingConcert(concert);
     setFormData({
       title: concert.title,
@@ -90,6 +92,45 @@ const AdminConcerts = () => {
       is_active: concert.is_active,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleToggleFeatured = async (concert: ConcertWithAgent) => {
+    try {
+      await updateConcert.mutateAsync({
+        id: concert.id,
+        is_featured: !concert.is_featured,
+      });
+    } catch (error) {
+      toast.error("Gagal mengubah status featured");
+    }
+  };
+
+  const handleToggleActive = async (concert: ConcertWithAgent) => {
+    try {
+      await updateConcert.mutateAsync({
+        id: concert.id,
+        is_active: !concert.is_active,
+      });
+    } catch (error) {
+      toast.error("Gagal mengubah status aktif");
+    }
+  };
+
+  const getEventStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <span className="px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-500">Approved</span>;
+      case "pending_approval":
+        return <span className="px-2 py-1 text-xs rounded-full bg-amber-500/20 text-amber-500">Pending</span>;
+      case "rejected":
+        return <span className="px-2 py-1 text-xs rounded-full bg-destructive/20 text-destructive">Rejected</span>;
+      case "cancelled":
+        return <span className="px-2 py-1 text-xs rounded-full bg-muted text-muted-foreground">Cancelled</span>;
+      case "draft":
+        return <span className="px-2 py-1 text-xs rounded-full bg-muted text-muted-foreground">Draft</span>;
+      default:
+        return <span className="px-2 py-1 text-xs rounded-full bg-muted text-muted-foreground">{status}</span>;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -313,10 +354,16 @@ const AdminConcerts = () => {
                       Tanggal
                     </th>
                     <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">
-                      Lokasi
+                      Agent
+                    </th>
+                    <th className="text-center px-6 py-4 text-sm font-medium text-muted-foreground">
+                      Featured
+                    </th>
+                    <th className="text-center px-6 py-4 text-sm font-medium text-muted-foreground">
+                      Aktif
                     </th>
                     <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">
-                      Status
+                      Event Status
                     </th>
                     <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">
                       Aksi
@@ -344,26 +391,44 @@ const AdminConcerts = () => {
                       <td className="px-6 py-4 text-sm">
                         {formatDate(concert.date)}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        {concert.venue}, {concert.city}
+                      <td className="px-6 py-4">
+                        {concert.agent_name ? (
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">{concert.agent_name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">Admin</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {concert.is_active ? (
-                            <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-500">
-                              Aktif
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-500">
-                              Nonaktif
-                            </span>
-                          )}
-                          {concert.is_featured && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-primary/20 text-primary">
-                              Featured
-                            </span>
-                          )}
+                        <div className="flex justify-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleFeatured(concert)}
+                            disabled={updateConcert.isPending}
+                            className={concert.is_featured ? "text-primary" : "text-muted-foreground"}
+                          >
+                            {concert.is_featured ? (
+                              <Star className="w-5 h-5 fill-primary" />
+                            ) : (
+                              <StarOff className="w-5 h-5" />
+                            )}
+                          </Button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={concert.is_active}
+                            onCheckedChange={() => handleToggleActive(concert)}
+                            disabled={updateConcert.isPending}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getEventStatusBadge(concert.event_status)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
