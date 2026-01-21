@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Search, MoreHorizontal, Key, UserCog, Shield, AlertCircle } from "lucide-react";
+import { Loader2, Search, MoreHorizontal, Key, UserCog, AlertCircle, UserPlus, Trash2 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -52,11 +62,23 @@ const AdminUsers = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Dialog states
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  // Form states
   const [newPassword, setNewPassword] = useState("");
   const [newStatus, setNewStatus] = useState<"active" | "suspended" | "inactive">("active");
   const [statusMessage, setStatusMessage] = useState("");
+  
+  // Create user form
+  const [newEmail, setNewEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newRole, setNewRole] = useState("user");
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -67,6 +89,51 @@ const AdminUsers = () => {
 
       if (error) throw error;
       return data.users as User[];
+    },
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async ({ email, password, full_name, role }: { 
+      email: string; 
+      password: string; 
+      full_name: string;
+      role: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "create_user", email, password, full_name, role },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "User berhasil ditambahkan" });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setCreateDialogOpen(false);
+      resetCreateForm();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Gagal menambah user", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "delete_user", user_id: userId },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "User berhasil dihapus" });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setDeleteDialogOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Gagal menghapus user", description: error.message, variant: "destructive" });
     },
   });
 
@@ -106,6 +173,13 @@ const AdminUsers = () => {
       toast({ title: "Gagal mengubah status", description: error.message, variant: "destructive" });
     },
   });
+
+  const resetCreateForm = () => {
+    setNewEmail("");
+    setNewUserPassword("");
+    setNewFullName("");
+    setNewRole("user");
+  };
 
   const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase();
@@ -153,6 +227,23 @@ const AdminUsers = () => {
     return badges;
   };
 
+  const handleCreateUser = () => {
+    if (!newEmail.trim()) {
+      toast({ title: "Email wajib diisi", variant: "destructive" });
+      return;
+    }
+    if (!newUserPassword || newUserPassword.length < 6) {
+      toast({ title: "Password minimal 6 karakter", variant: "destructive" });
+      return;
+    }
+    createUserMutation.mutate({
+      email: newEmail,
+      password: newUserPassword,
+      full_name: newFullName,
+      role: newRole,
+    });
+  };
+
   const handlePasswordChange = () => {
     if (!selectedUser || !newPassword) return;
     if (newPassword.length < 6) {
@@ -165,6 +256,11 @@ const AdminUsers = () => {
   const handleStatusChange = () => {
     if (!selectedUser) return;
     updateStatusMutation.mutate({ userId: selectedUser.id, status: newStatus, message: statusMessage });
+  };
+
+  const handleDeleteUser = () => {
+    if (!selectedUser) return;
+    deleteUserMutation.mutate(selectedUser.id);
   };
 
   const openPasswordDialog = (user: User) => {
@@ -180,14 +276,25 @@ const AdminUsers = () => {
     setStatusDialogOpen(true);
   };
 
+  const openDeleteDialog = (user: User) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="font-display text-2xl font-bold">Kelola Pengguna</h2>
-          <p className="text-muted-foreground">
-            Lihat dan kelola semua pengguna terdaftar
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-2xl font-bold">Kelola Pengguna</h2>
+            <p className="text-muted-foreground">
+              Lihat dan kelola semua pengguna terdaftar
+            </p>
+          </div>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Tambah User
+          </Button>
         </div>
 
         {/* Search */}
@@ -279,6 +386,14 @@ const AdminUsers = () => {
                               <UserCog className="w-4 h-4 mr-2" />
                               Ubah Status
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => openDeleteDialog(user)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Hapus User
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -289,6 +404,97 @@ const AdminUsers = () => {
             </div>
           )}
         </div>
+
+        {/* Create User Dialog */}
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Tambah User Baru</DialogTitle>
+              <DialogDescription>
+                Buat akun user baru secara manual
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-email">Email *</Label>
+                <Input
+                  id="new-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-user-password">Password *</Label>
+                <Input
+                  id="new-user-password"
+                  type="password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  placeholder="Minimal 6 karakter"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-full-name">Nama Lengkap</Label>
+                <Input
+                  id="new-full-name"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  placeholder="Nama lengkap user"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-role">Role</Label>
+                <Select value={newRole} onValueChange={setNewRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button 
+                onClick={handleCreateUser}
+                disabled={createUserMutation.isPending}
+              >
+                {createUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Tambah User
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Hapus User?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Anda yakin ingin menghapus user <strong>{selectedUser?.email}</strong>? 
+                Tindakan ini tidak dapat dibatalkan dan akan menghapus semua data terkait user ini.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteUserMutation.isPending}
+              >
+                {deleteUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Hapus
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Password Dialog */}
         <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>

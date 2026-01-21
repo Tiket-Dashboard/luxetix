@@ -71,19 +71,27 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Check if already registered
+        // Check if already registered as active agent
         const { data: existingAgent } = await supabaseAdmin
           .from("agents")
           .select("id, registration_status")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (existingAgent) {
+        if (existingAgent && existingAgent.registration_status === "active") {
           return new Response(
-            JSON.stringify({ error: "You already have an agent registration", status: existingAgent.registration_status }),
+            JSON.stringify({ error: "You are already an active agent", status: existingAgent.registration_status }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        // Delete any expired pending registrations to allow retry
+        await supabaseAdmin
+          .from("agent_registrations")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("status", "pending")
+          .lt("expires_at", new Date().toISOString());
 
         // Get agent settings for registration fee
         const { data: settings } = await supabaseAdmin
