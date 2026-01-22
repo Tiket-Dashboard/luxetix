@@ -220,6 +220,7 @@ export type Database = {
           description: string | null
           event_status: Database["public"]["Enums"]["event_status"]
           id: string
+          image_aspect_ratio: string | null
           image_url: string | null
           is_active: boolean | null
           is_featured: boolean | null
@@ -240,6 +241,7 @@ export type Database = {
           description?: string | null
           event_status?: Database["public"]["Enums"]["event_status"]
           id?: string
+          image_aspect_ratio?: string | null
           image_url?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
@@ -260,6 +262,7 @@ export type Database = {
           description?: string | null
           event_status?: Database["public"]["Enums"]["event_status"]
           id?: string
+          image_aspect_ratio?: string | null
           image_url?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
