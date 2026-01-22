@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Loader2, ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AgentLayout from "@/components/agent/AgentLayout";
+import ImageUploadWithAspectRatio, { AspectRatioType } from "@/components/admin/ImageUploadWithAspectRatio";
 
 interface TicketType {
   name: string;
@@ -43,8 +44,8 @@ const AgentEventCreate = () => {
   const [venue, setVenue] = useState("");
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("Lainnya");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageAspectRatio, setImageAspectRatio] = useState<AspectRatioType>("16:9");
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
     { name: "Regular", description: "", price: 0, total_quantity: 100, benefits: [] }
   ]);
@@ -82,23 +83,6 @@ const AgentEventCreate = () => {
     mutationFn: async () => {
       if (!agent) throw new Error("Agent not found");
 
-      // Upload image if exists
-      let imageUrl = null;
-      if (imageFile) {
-        const fileName = `${Date.now()}-${imageFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("concert-images")
-          .upload(fileName, imageFile);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: urlData } = supabase.storage
-          .from("concert-images")
-          .getPublicUrl(fileName);
-        
-        imageUrl = urlData.publicUrl;
-      }
-
       // Determine event status
       const eventStatus = agent.is_auto_approve ? "approved" : "pending_approval";
 
@@ -115,6 +99,7 @@ const AgentEventCreate = () => {
           city,
           category,
           image_url: imageUrl,
+          image_aspect_ratio: imageAspectRatio,
           agent_id: agent.id,
           event_status: eventStatus,
           is_active: agent.is_auto_approve, // Only active if auto-approved
@@ -155,18 +140,6 @@ const AgentEventCreate = () => {
       toast({ title: "Gagal membuat event", description: error.message, variant: "destructive" });
     },
   });
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const addTicketType = () => {
     setTicketTypes([...ticketTypes, { name: "", description: "", price: 0, total_quantity: 50, benefits: [] }]);
@@ -327,28 +300,13 @@ const AgentEventCreate = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Gambar Event</Label>
-                <div className="flex items-center gap-4">
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-32 h-20 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-32 h-20 bg-secondary rounded-lg flex items-center justify-center">
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="max-w-xs"
-                  />
-                </div>
-              </div>
+              <ImageUploadWithAspectRatio
+                imageUrl={imageUrl}
+                aspectRatio={imageAspectRatio}
+                onImageChange={setImageUrl}
+                onAspectRatioChange={setImageAspectRatio}
+                folder="concerts"
+              />
             </CardContent>
           </Card>
 

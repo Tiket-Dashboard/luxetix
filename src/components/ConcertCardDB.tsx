@@ -6,9 +6,11 @@ import { Concert } from "@/types/database";
 import { useLowestTicketPrice } from "@/hooks/useConcerts";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { getAspectRatioClass } from "@/lib/aspectRatio";
+import { cn } from "@/lib/utils";
 
 interface ConcertCardDBProps {
-  concert: Concert;
+  concert: Concert & { image_aspect_ratio?: string | null };
 }
 
 const ConcertCardDB = ({ concert }: ConcertCardDBProps) => {
@@ -38,11 +40,14 @@ const ConcertCardDB = ({ concert }: ConcertCardDBProps) => {
       }`}
     >
       {/* Image Container */}
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className={cn(
+        "relative overflow-hidden",
+        getAspectRatioClass(concert.image_aspect_ratio)
+      )}>
         <img
           src={concert.image_url || "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&auto=format&fit=crop"}
           alt={concert.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
 

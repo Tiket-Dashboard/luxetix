@@ -10,6 +10,7 @@ export interface Concert {
   venue: string;
   city: string;
   image_url: string | null;
+  image_aspect_ratio: string | null;
   category: string;
   is_featured: boolean;
   is_active: boolean;
