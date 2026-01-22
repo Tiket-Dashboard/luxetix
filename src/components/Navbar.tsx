@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Ticket, User, LogOut, LayoutDashboard, Calendar } from "lucide-react";
+import { Menu, X, Ticket, User, LogOut, LayoutDashboard, Calendar, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
-
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
@@ -56,22 +61,45 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
-                {isAdmin && (
+                {isAdmin && isAgent ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="gold" size="sm" className="gap-2">
+                        <LayoutDashboard className="w-4 h-4" />
+                        Dashboard
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
+                          <LayoutDashboard className="w-4 h-4" />
+                          Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/agent" className="flex items-center gap-2 cursor-pointer">
+                          <Calendar className="w-4 h-4" />
+                          Agent Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : isAdmin ? (
                   <Link to="/admin">
                     <Button variant="gold" size="sm" className="gap-2">
                       <LayoutDashboard className="w-4 h-4" />
                       Admin Dashboard
                     </Button>
                   </Link>
-                )}
-                {isAgent && !isAdmin && (
+                ) : isAgent ? (
                   <Link to="/agent">
                     <Button variant="gold" size="sm" className="gap-2">
                       <Calendar className="w-4 h-4" />
                       Agent Dashboard
                     </Button>
                   </Link>
-                )}
+                ) : null}
                 <Link to="/profile">
                   <Button variant="goldOutline" size="sm" className="gap-2">
                     <User className="w-4 h-4" />
@@ -143,9 +171,9 @@ const Navbar = () => {
                         </Button>
                       </Link>
                     )}
-                    {isAgent && !isAdmin && (
+                    {isAgent && (
                       <Link to="/agent" onClick={() => setIsOpen(false)}>
-                        <Button variant="gold" className="w-full gap-2">
+                        <Button variant={isAdmin ? "goldOutline" : "gold"} className="w-full gap-2">
                           <Calendar className="w-4 h-4" />
                           Agent Dashboard
                         </Button>
