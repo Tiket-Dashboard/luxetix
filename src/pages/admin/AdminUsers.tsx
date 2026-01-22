@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Search, MoreHorizontal, Key, UserCog, AlertCircle, UserPlus, Trash2 } from "lucide-react";
+import { Loader2, Search, MoreHorizontal, Key, UserCog, AlertCircle, UserPlus, Trash2, Shield, ShieldOff } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ const AdminUsers = () => {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   // Form states
@@ -171,6 +172,27 @@ const AdminUsers = () => {
     },
     onError: (error: Error) => {
       toast({ title: "Gagal mengubah status", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role, add }: { userId: string; role: string; add: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "update_role", user_id: userId, role, add },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      toast({ 
+        title: variables.add ? "Role admin berhasil ditambahkan" : "Role admin berhasil dihapus" 
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setRoleDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Gagal mengubah role", description: error.message, variant: "destructive" });
     },
   });
 
@@ -281,6 +303,21 @@ const AdminUsers = () => {
     setDeleteDialogOpen(true);
   };
 
+  const openRoleDialog = (user: User) => {
+    setSelectedUser(user);
+    setRoleDialogOpen(true);
+  };
+
+  const handleToggleAdmin = () => {
+    if (!selectedUser) return;
+    const isAdmin = selectedUser.roles.includes("admin");
+    updateRoleMutation.mutate({ 
+      userId: selectedUser.id, 
+      role: "admin", 
+      add: !isAdmin 
+    });
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -385,6 +422,19 @@ const AdminUsers = () => {
                             <DropdownMenuItem onClick={() => openStatusDialog(user)}>
                               <UserCog className="w-4 h-4 mr-2" />
                               Ubah Status
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openRoleDialog(user)}>
+                              {user.roles.includes("admin") ? (
+                                <>
+                                  <ShieldOff className="w-4 h-4 mr-2" />
+                                  Hapus Role Admin
+                                </>
+                              ) : (
+                                <>
+                                  <Shield className="w-4 h-4 mr-2" />
+                                  Jadikan Admin
+                                </>
+                              )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -590,6 +640,44 @@ const AdminUsers = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Role Dialog */}
+        <AlertDialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {selectedUser?.roles.includes("admin") ? "Hapus Role Admin?" : "Jadikan Admin?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {selectedUser?.roles.includes("admin") ? (
+                  <>
+                    Anda yakin ingin menghapus role admin dari <strong>{selectedUser?.email}</strong>? 
+                    User ini tidak akan bisa mengakses panel admin lagi.
+                  </>
+                ) : (
+                  <>
+                    Anda yakin ingin menjadikan <strong>{selectedUser?.email}</strong> sebagai admin? 
+                    User ini akan mendapatkan akses penuh ke panel admin.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleToggleAdmin}
+                disabled={updateRoleMutation.isPending}
+                className={selectedUser?.roles.includes("admin") 
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" 
+                  : ""
+                }
+              >
+                {updateRoleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {selectedUser?.roles.includes("admin") ? "Hapus Admin" : "Jadikan Admin"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
