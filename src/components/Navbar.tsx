@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Ticket, User, LogOut } from "lucide-react";
+import { Menu, X, Ticket, User, LogOut, LayoutDashboard, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin, isAgent } = useAuth();
 
   const navLinks = [
     { name: "Beranda", path: "/" },
@@ -56,6 +56,22 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
+                {isAdmin && (
+                  <Link to="/admin">
+                    <Button variant="gold" size="sm" className="gap-2">
+                      <LayoutDashboard className="w-4 h-4" />
+                      Admin Dashboard
+                    </Button>
+                  </Link>
+                )}
+                {isAgent && !isAdmin && (
+                  <Link to="/agent">
+                    <Button variant="gold" size="sm" className="gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Agent Dashboard
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/profile">
                   <Button variant="goldOutline" size="sm" className="gap-2">
                     <User className="w-4 h-4" />
@@ -119,6 +135,22 @@ const Navbar = () => {
               <div className="flex flex-col gap-3 pt-4 border-t border-border/30">
                 {user ? (
                   <>
+                    {isAdmin && (
+                      <Link to="/admin" onClick={() => setIsOpen(false)}>
+                        <Button variant="gold" className="w-full gap-2">
+                          <LayoutDashboard className="w-4 h-4" />
+                          Admin Dashboard
+                        </Button>
+                      </Link>
+                    )}
+                    {isAgent && !isAdmin && (
+                      <Link to="/agent" onClick={() => setIsOpen(false)}>
+                        <Button variant="gold" className="w-full gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Agent Dashboard
+                        </Button>
+                      </Link>
+                    )}
                     <Link to="/profile" onClick={() => setIsOpen(false)}>
                       <Button variant="goldOutline" className="w-full gap-2">
                         <User className="w-4 h-4" />
