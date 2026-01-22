@@ -294,6 +294,91 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "toggle_agent": {
+        const { user_id, make_agent, business_name } = params;
+        
+        if (!user_id) {
+          return new Response(
+            JSON.stringify({ error: "Missing user_id" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (make_agent) {
+          // Check if agent already exists
+          const { data: existingAgent } = await supabaseAdmin
+            .from("agents")
+            .select("id, registration_status")
+            .eq("user_id", user_id)
+            .maybeSingle();
+
+          if (existingAgent) {
+            // Reactivate existing agent
+            const { error: updateError } = await supabaseAdmin
+              .from("agents")
+              .update({ 
+                registration_status: "active",
+                updated_at: new Date().toISOString()
+              })
+              .eq("user_id", user_id);
+
+            if (updateError) {
+              console.error("Error reactivating agent:", updateError);
+              throw updateError;
+            }
+          } else {
+            // Create new agent
+            const { error: insertError } = await supabaseAdmin
+              .from("agents")
+              .insert({
+                user_id,
+                business_name: business_name || "Agent",
+                registration_status: "active",
+              });
+
+            if (insertError) {
+              console.error("Error creating agent:", insertError);
+              throw insertError;
+            }
+          }
+
+          // Add agent role to user_roles
+          await supabaseAdmin
+            .from("user_roles")
+            .upsert({ user_id, role: "agent" }, { onConflict: "user_id,role" });
+
+          console.log(`User ${user_id} is now an agent`);
+        } else {
+          // Deactivate agent
+          const { error: updateError } = await supabaseAdmin
+            .from("agents")
+            .update({ 
+              registration_status: "inactive",
+              updated_at: new Date().toISOString()
+            })
+            .eq("user_id", user_id);
+
+          if (updateError) {
+            console.error("Error deactivating agent:", updateError);
+            throw updateError;
+          }
+
+          // Remove agent role from user_roles
+          await supabaseAdmin
+            .from("user_roles")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("role", "agent");
+
+          console.log(`User ${user_id} is no longer an agent`);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: make_agent ? "Agent role added" : "Agent role removed" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "Unknown action" }),

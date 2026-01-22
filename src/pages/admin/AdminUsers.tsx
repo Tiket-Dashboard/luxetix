@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Search, MoreHorizontal, Key, UserCog, AlertCircle, UserPlus, Trash2, Shield, ShieldOff } from "lucide-react";
+import { Loader2, Search, MoreHorizontal, Key, UserCog, AlertCircle, UserPlus, Trash2, Shield, ShieldOff, UserCheck, UserX } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,7 @@ const AdminUsers = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   // Form states
@@ -80,6 +81,7 @@ const AdminUsers = () => {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newFullName, setNewFullName] = useState("");
   const [newRole, setNewRole] = useState("user");
+  const [agentBusinessName, setAgentBusinessName] = useState("");
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -193,6 +195,28 @@ const AdminUsers = () => {
     },
     onError: (error: Error) => {
       toast({ title: "Gagal mengubah role", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleAgentMutation = useMutation({
+    mutationFn: async ({ userId, makeAgent, businessName }: { userId: string; makeAgent: boolean; businessName?: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "toggle_agent", user_id: userId, make_agent: makeAgent, business_name: businessName },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      toast({ 
+        title: variables.makeAgent ? "Role agent berhasil ditambahkan" : "Role agent berhasil dihapus" 
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setAgentDialogOpen(false);
+      setAgentBusinessName("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Gagal mengubah role agent", description: error.message, variant: "destructive" });
     },
   });
 
@@ -318,6 +342,28 @@ const AdminUsers = () => {
     });
   };
 
+  const openAgentDialog = (user: User) => {
+    setSelectedUser(user);
+    setAgentBusinessName("");
+    setAgentDialogOpen(true);
+  };
+
+  const handleToggleAgent = () => {
+    if (!selectedUser) return;
+    const isAgent = selectedUser.is_agent && selectedUser.agent_status === "active";
+    
+    if (!isAgent && !agentBusinessName.trim()) {
+      toast({ title: "Nama bisnis wajib diisi", variant: "destructive" });
+      return;
+    }
+    
+    toggleAgentMutation.mutate({ 
+      userId: selectedUser.id, 
+      makeAgent: !isAgent,
+      businessName: agentBusinessName
+    });
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -433,6 +479,19 @@ const AdminUsers = () => {
                                 <>
                                   <Shield className="w-4 h-4 mr-2" />
                                   Jadikan Admin
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openAgentDialog(user)}>
+                              {user.is_agent && user.agent_status === "active" ? (
+                                <>
+                                  <UserX className="w-4 h-4 mr-2" />
+                                  Hapus Role Agent
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="w-4 h-4 mr-2" />
+                                  Jadikan Agent
                                 </>
                               )}
                             </DropdownMenuItem>
@@ -678,6 +737,61 @@ const AdminUsers = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Agent Role Dialog */}
+        <Dialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedUser?.is_agent && selectedUser?.agent_status === "active" 
+                  ? "Hapus Role Agent?" 
+                  : "Jadikan Agent?"}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedUser?.is_agent && selectedUser?.agent_status === "active" ? (
+                  <>
+                    Anda yakin ingin menghapus role agent dari <strong>{selectedUser?.email}</strong>? 
+                    User ini tidak akan bisa membuat event lagi.
+                  </>
+                ) : (
+                  <>
+                    Jadikan <strong>{selectedUser?.email}</strong> sebagai agent untuk membuat dan mengelola event.
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {!(selectedUser?.is_agent && selectedUser?.agent_status === "active") && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="agent-business-name">Nama Bisnis *</Label>
+                  <Input
+                    id="agent-business-name"
+                    value={agentBusinessName}
+                    onChange={(e) => setAgentBusinessName(e.target.value)}
+                    placeholder="Nama bisnis agent"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAgentDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button 
+                onClick={handleToggleAgent}
+                disabled={toggleAgentMutation.isPending}
+                variant={selectedUser?.is_agent && selectedUser?.agent_status === "active" ? "destructive" : "default"}
+              >
+                {toggleAgentMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {selectedUser?.is_agent && selectedUser?.agent_status === "active" 
+                  ? "Hapus Agent" 
+                  : "Jadikan Agent"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
