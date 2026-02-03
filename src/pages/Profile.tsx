@@ -1,5 +1,5 @@
 import { Navigate, Link, useNavigate } from "react-router-dom";
-import { User, Mail, Phone, Calendar, MapPin, Ticket, Loader2, LogOut, QrCode, CreditCard, Clock } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Ticket, Loader2, LogOut, QrCode, CreditCard, Clock, XCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -16,20 +16,44 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { useCancelOrder } from "@/hooks/useCancelOrder";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Profile = () => {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useUserProfile();
   const { data: orders = [], isLoading: ordersLoading } = useUserOrdersWithTicketCodes();
+  const { cancelOrder, isCancelling } = useCancelOrder();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [now, setNow] = useState(new Date());
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
   // Update "now" every second for countdown
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleCancelOrder = (orderId: string) => {
+    setOrderToCancel(orderId);
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+    
+    const success = await cancelOrder(orderToCancel);
+    if (success) {
+      queryClient.invalidateQueries({ queryKey: ["user-orders"] });
+    }
+    setCancelDialogOpen(false);
+    setOrderToCancel(null);
+  };
 
   if (authLoading) {
     return (
@@ -285,18 +309,34 @@ const Profile = () => {
                           </span>
                         </div>
                         
-                        {/* Continue Payment Button */}
-                        {canContinuePayment && (
-                          <Button
-                            variant="gold"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => handleContinuePayment(order.id)}
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            Lanjutkan Pembayaran
-                          </Button>
-                        )}
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          {/* Cancel Order Button */}
+                          {canContinuePayment && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleCancelOrder(order.id)}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Batalkan
+                            </Button>
+                          )}
+                          
+                          {/* Continue Payment Button */}
+                          {canContinuePayment && (
+                            <Button
+                              variant="gold"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => handleContinuePayment(order.id)}
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              Lanjutkan Pembayaran
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -308,6 +348,45 @@ const Profile = () => {
       </main>
 
       <Footer />
+
+      {/* Cancel Order Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Batalkan Pesanan?</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin membatalkan pesanan ini? Tiket akan dikembalikan ke stok dan Anda dapat membuat pesanan baru.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={isCancelling}
+            >
+              Tidak, Kembali
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmCancelOrder}
+              disabled={isCancelling}
+              className="gap-2"
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Membatalkan...
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4" />
+                  Ya, Batalkan
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
